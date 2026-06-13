@@ -69,6 +69,10 @@ jobs:
               | grep -v "apt_info_script" \
               | grep -v "# .*termux" \
               | grep -v "termux/termux-packages" \
+              | grep -v "packages-cf\.termux\.dev" \
+              | grep -v "packages\.termux\.dev" \
+              | grep -v "termux-main" \
+              | grep -v "BRANDING\.md\|/BRANDING\.md" \
               || true)
 
           if [ -n "$FOUND" ]; then
