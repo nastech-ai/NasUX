@@ -26,5 +26,5 @@
         android:gravity="start|center_vertical"
         android:textSize="13sp"
         android:textColor="@color/session_text"
-        android:fontFamily="monospace" />
+        android:fontFamily="@font/source_code_pro" />
 </LinearLayout>

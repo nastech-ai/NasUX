@@ -24,7 +24,7 @@
             android:textColor="@color/nastech_accent"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/source_code_pro" />
 
         <TextView
             android:id="@+id/wizard_step_indicator"
@@ -33,7 +33,7 @@
             android:text="1 / 4"
             android:textColor="@color/text_disabled"
             android:textSize="12sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/source_code_pro" />
     </LinearLayout>
 
     <!-- Step progress dots -->
@@ -76,7 +76,7 @@
                 android:text="◈"
                 android:textColor="@color/nastech_accent"
                 android:textSize="36sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/source_code_pro"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="12dp" />
 
@@ -88,7 +88,7 @@
                 android:textColor="@color/text_primary"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/source_code_pro"
                 android:gravity="center"
                 android:layout_marginBottom="10dp" />
 
@@ -99,7 +99,7 @@
                 android:text="Full Linux + NasTech AI on your Android"
                 android:textColor="@color/nastech_accent"
                 android:textSize="13sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/source_code_pro"
                 android:gravity="center"
                 android:layout_marginBottom="20dp" />
 
@@ -110,7 +110,7 @@
                 android:text=""
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/source_code_pro"
                 android:lineSpacingExtra="4dp"
                 android:layout_marginBottom="16dp" />
 
@@ -131,7 +131,7 @@
                     android:text=""
                     android:textColor="@color/terminal_green"
                     android:textSize="11sp"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/source_code_pro"
                     android:lineSpacingExtra="2dp" />
             </ScrollView>
 
@@ -158,7 +158,7 @@
                     android:text="Installing…"
                     android:textColor="@color/nastech_accent"
                     android:textSize="11sp"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/source_code_pro"
                     android:gravity="center" />
             </LinearLayout>
 
@@ -185,7 +185,7 @@
             android:text="Skip"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/source_code_pro"
             android:strokeColor="@color/divider"
             android:layout_marginEnd="8dp" />
 
@@ -198,7 +198,7 @@
             android:textColor="@color/amoled_bg"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/source_code_pro"
             android:backgroundTint="@color/nastech_accent" />
 
     </LinearLayout>

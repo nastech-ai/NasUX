@@ -36,8 +36,32 @@ import io.noties.markwon.MarkwonSpansFactory;
 import io.noties.markwon.MarkwonVisitor;
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin;
 import io.noties.markwon.linkify.LinkifyPlugin;
+import io.noties.markwon.syntax.Prism4jThemeDarkula;
+import io.noties.markwon.syntax.SyntaxHighlightPlugin;
+import io.noties.prism4j.Prism4j;
+import io.noties.prism4j.annotations.PrismBundle;
 
+@PrismBundle(
+    include = {
+        "bash", "c", "cpp", "python", "java", "javascript",
+        "json", "yaml", "markdown", "sql", "dockerfile", "git"
+    },
+    grammarLocatorClassName = ".NasUXGrammarLocator"
+)
 public class MarkdownUtils {
+
+    private static Prism4j sPrism4j;
+
+    private static Prism4j getPrism4j() {
+        if (sPrism4j == null) {
+            try {
+                sPrism4j = new Prism4j(new NasUXGrammarLocator());
+            } catch (Throwable t) {
+                sPrism4j = new Prism4j(new io.noties.prism4j.GrammarLocatorDef());
+            }
+        }
+        return sPrism4j;
+    }
 
     public static final String backtick = "`";
     public static final Pattern backticksPattern = Pattern.compile("(" + backtick + "+)");
@@ -139,30 +163,16 @@ public class MarkdownUtils {
      */
     public static Markwon getRecyclerMarkwonBuilder(Context context) {
         return Markwon.builder(context)
+            .usePlugin(SyntaxHighlightPlugin.create(getPrism4j(), Prism4jThemeDarkula.create()))
             .usePlugin(LinkifyPlugin.create(Linkify.EMAIL_ADDRESSES | Linkify.WEB_URLS))
             .usePlugin(new AbstractMarkwonPlugin() {
                 @Override
-                public void configureVisitor(@NonNull MarkwonVisitor.Builder builder) {
-                    builder.on(FencedCodeBlock.class, (visitor, fencedCodeBlock) -> {
-                        // we actually won't be applying code spans here, as our custom xml view will
-                        // draw background and apply mono typeface
-                        //
-                        // NB the `trim` operation on literal (as code will have a new line at the end)
-                        final CharSequence code = visitor.configuration()
-                            .syntaxHighlight()
-                            .highlight(fencedCodeBlock.getInfo(), fencedCodeBlock.getLiteral().trim());
-                        visitor.builder().append(code);
-                    });
-                }
-
-                @Override
                 public void configureSpansFactory(@NonNull MarkwonSpansFactory.Builder builder) {
-                    // Do not change color for night themes
                     if (!ThemeUtils.isNightModeEnabled(context)) {
                         builder
-                            // set color for inline code
                             .setFactory(Code.class, (configuration, props) -> new Object[]{
                                 new BackgroundColorSpan(ContextCompat.getColor(context, R.color.background_markdown_code_inline)),
+                                new TypefaceSpan("monospace"),
                             });
                     }
                 }

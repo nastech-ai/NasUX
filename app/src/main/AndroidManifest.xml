@@ -277,6 +277,11 @@
             android:name="com.sec.android.support.multiwindow"
             android:value="true" />
 
+        <!-- Source Code Pro — preloaded via Google Fonts provider -->
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
+
     </application>
 
 </manifest>

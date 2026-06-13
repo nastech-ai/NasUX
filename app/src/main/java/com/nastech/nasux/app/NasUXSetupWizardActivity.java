@@ -2,19 +2,18 @@ package com.nastech.nasux.app;
 
 import com.nastech.nasux.R;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 /**
@@ -25,7 +24,7 @@ import androidx.core.content.ContextCompat;
  *   Step 3: Install instructions
  *   Step 4: Done — Launch NasTech AI
  */
-public class NasUXSetupWizardActivity extends Activity {
+public class NasUXSetupWizardActivity extends AppCompatActivity {
 
     private int mCurrentStep = 1;
     private static final int TOTAL_STEPS = 4;
@@ -47,7 +46,6 @@ public class NasUXSetupWizardActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN

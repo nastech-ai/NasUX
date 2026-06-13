@@ -2,24 +2,24 @@ package com.nastech.nasux.app;
 
 import com.nastech.nasux.R;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 /**
  * NasUX Splash Screen — shown on every launch.
  * On first run, presents the NasTech AI setup wizard button.
  * On subsequent runs, auto-proceeds to NasUXActivity after a brief animated display.
  */
-public class NasUXSplashActivity extends Activity {
+public class NasUXSplashActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "nasux_prefs";
     private static final String KEY_FIRST_RUN = "first_run_complete";
@@ -34,7 +34,6 @@ public class NasUXSplashActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN

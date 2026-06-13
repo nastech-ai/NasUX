@@ -17,6 +17,9 @@ android {
         implementation "io.noties.markwon:ext-strikethrough:$markwonVersion"
         implementation "io.noties.markwon:linkify:$markwonVersion"
         implementation "io.noties.markwon:recycler:$markwonVersion"
+        implementation "io.noties.markwon:syntax-highlight:$markwonVersion"
+        implementation "io.noties.prism4j:prism4j:2.0.0"
+        annotationProcessor "io.noties.prism4j:prism4j-bundler:2.0.0"
         implementation "org.lsposed.hiddenapibypass:hiddenapibypass:6.1"
 
         implementation "androidx.window:window:1.1.0"

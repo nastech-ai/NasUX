@@ -21,7 +21,7 @@
             android:text="╔══════════════════╗"
             android:textColor="@color/nastech_accent"
             android:textSize="14sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/source_code_pro"
             android:letterSpacing="0.0" />
 
         <TextView
@@ -31,7 +31,7 @@
             android:textColor="@color/nastech_accent"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/source_code_pro" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -39,7 +39,7 @@
             android:text="╚══════════════════╝"
             android:textColor="@color/nastech_accent"
             android:textSize="14sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/source_code_pro" />
 
     </LinearLayout>
 
@@ -51,7 +51,7 @@
         android:text="Powered by NasTech AI"
         android:textColor="@color/text_secondary"
         android:textSize="13sp"
-        android:fontFamily="monospace" />
+        android:fontFamily="@font/source_code_pro" />
 
     <!-- Version / tagline -->
     <TextView
@@ -62,7 +62,7 @@
         android:text="Full Linux · Full AI · Any Android"
         android:textColor="@color/text_disabled"
         android:textSize="11sp"
-        android:fontFamily="monospace" />
+        android:fontFamily="@font/source_code_pro" />
 
     <!-- Animated status line -->
     <TextView
@@ -73,7 +73,7 @@
         android:text="Initializing…"
         android:textColor="@color/nastech_accent"
         android:textSize="12sp"
-        android:fontFamily="monospace" />
+        android:fontFamily="@font/source_code_pro" />
 
     <!-- Progress bar — NasTech teal -->
     <ProgressBar
@@ -95,7 +95,7 @@
         android:text="→  Setup NasTech AI"
         android:textColor="@color/amoled_bg"
         android:textSize="14sp"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/source_code_pro"
         android:backgroundTint="@color/nastech_accent"
         android:visibility="gone" />
 

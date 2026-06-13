@@ -37,7 +37,6 @@ import com.nastech.nasux.shared.activities.ReportActivity;
 import com.nastech.nasux.shared.activity.ActivityUtils;
 import com.nastech.nasux.shared.activity.media.AppCompatActivityUtils;
 
-import androidx.annotation.NonNull;
 import rikka.shizuku.Shizuku;
 import com.nastech.nasux.shared.data.IntentUtils;
 import com.nastech.nasux.shared.android.PermissionUtils;
