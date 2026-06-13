@@ -385,7 +385,7 @@ Push to master
 
 1. **Fork** the repository on GitHub
 2. **Create a branch**: `git checkout -b feat/my-feature`
-3. **Follow the naming convention** — all classes, packages, and resources must use the `NasUX` / `NasTech` / `com.nastech.nasux` namespace. The Brand Enforcement CI check will block any leftover Termux references.
+3. **Follow the naming convention** — all classes, packages, and resources must use the `NasUX` / `NasTech` / `com.nastech.nasux` namespace. The Brand Enforcement CI check blocks any legacy third-party branding.
 4. **Commit** using [Conventional Commits](https://www.conventionalcommits.org/):
    - `feat: add voice command support`
    - `fix: correct R import in ThemeActivity`
