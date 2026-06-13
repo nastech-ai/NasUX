@@ -28,19 +28,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Checking latest Termux bootstrap release ==="
+          echo "=== Checking latest NasUX-Packages bootstrap release ==="
 
-          # Fetch the latest bootstrap release that targets apt.android-7
+          # Primary: check nastech-ai/NasUX-Packages for a bootstrap release
           LATEST_TAG=$(gh api \
-            "repos/termux/termux-packages/releases?per_page=30" \
+            "repos/nastech-ai/NasUX-Packages/releases?per_page=30" \
             --jq '[.[] | select(.tag_name | startswith("bootstrap-")) |
                    select(.tag_name | contains("apt.android-7")) |
                    .tag_name][0]' 2>/dev/null || echo "")
 
           if [ -z "${LATEST_TAG}" ] || [ "${LATEST_TAG}" = "null" ]; then
-            echo "❌ Could not fetch latest bootstrap release tag."
+            echo "❌ No NasUX-Packages bootstrap release found. Publish a release at:"
+            echo "   https://github.com/nastech-ai/NasUX-Packages/releases"
+            echo "   with tag prefix 'bootstrap-' and variant 'apt.android-7'."
             exit 1
           fi
+          BOOTSTRAP_SOURCE="nasux-packages"
+          echo "BOOTSTRAP_SOURCE=${BOOTSTRAP_SOURCE}" >> $GITHUB_OUTPUT
 
           # Extract just the date+rev part: bootstrap-2026.06.07-r1+apt.android-7 -> 2026.06.07-r1
           LATEST_VERSION=$(echo "${LATEST_TAG}" \
@@ -77,8 +81,8 @@ jobs:
           URL_TAG=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe='-.'))" \
             "${LATEST_TAG}")
 
-          BASE_URL="https://github.com/termux/termux-packages/releases/download/${URL_TAG}"
-          echo "Downloading from: ${BASE_URL}"
+          BASE_URL="https://github.com/nastech-ai/NasUX-Packages/releases/download/bootstrap-${URL_TAG}"
+          echo "Downloading from: ${BASE_URL} (source: ${{ steps.detect.outputs.BOOTSTRAP_SOURCE }})"
           echo ""
 
           declare -A CS
@@ -197,7 +201,7 @@ jobs:
           echo "|---|---|"                                                                                                               >> "${_PR_BODY_F}"
           echo "| **Previous version** | \`${CURRENT_VERSION}\` |"                                                                      >> "${_PR_BODY_F}"
           echo "| **New version**      | \`${LATEST_VERSION}\` |"                                                                       >> "${_PR_BODY_F}"
-          echo "| **Source tag**       | [\`${LATEST_TAG}\`](https://github.com/termux/termux-packages/releases/tag/${LATEST_TAG}) |"   >> "${_PR_BODY_F}"
+          echo "| **Source tag**       | [\`${LATEST_TAG}\`](https://github.com/nastech-ai/NasUX-Packages/releases/tag/${LATEST_TAG}) |"   >> "${_PR_BODY_F}"
           echo ""                                                                                                                        >> "${_PR_BODY_F}"
           echo "### Verified SHA-256 checksums"                                                                                         >> "${_PR_BODY_F}"
           echo "| ABI | SHA-256 |"                                                                                                       >> "${_PR_BODY_F}"
