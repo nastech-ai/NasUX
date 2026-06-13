@@ -111,8 +111,12 @@ SYSTEM_PKGS=(
     tflite
     proot
     proot-distro
+    nasux-utils
+)
+
+# NasUX core tools (internal pkg name: termux-tools) — provides system utilities
+NASUX_CORE_PKGS=(
     termux-tools
-    termux-api
 )
 
 info "Installing ${#SYSTEM_PKGS[@]} system packages…"
@@ -120,6 +124,20 @@ pkg update -y 2>&1 | tail -3
 for pkg in "${SYSTEM_PKGS[@]}"; do
     pkg install -y "$pkg" 2>/dev/null && log "$pkg" || warn "Skipped: $pkg"
 done
+
+info "Installing NasUX core system tools…"
+for pkg in "${NASUX_CORE_PKGS[@]}"; do
+    pkg install -y "$pkg" 2>/dev/null && log "$pkg (NasUX core)" || warn "Skipped: $pkg"
+done
+
+# Install NasTech CLI wrappers (nastech-setup-storage, nastech-open, etc.)
+step "NasTech CLI Wrappers"
+WRAPPERS_SCRIPT="$(dirname "$0")/nastech-wrappers.sh"
+if [ -f "$WRAPPERS_SCRIPT" ]; then
+    bash "$WRAPPERS_SCRIPT"
+else
+    warn "nastech-wrappers.sh not found — skipping CLI wrapper install"
+fi
 
 # ─── Step 2: Python Environment ─────────────────────────────────────────────
 step "Step 2/6: Python 3.11 Environment"

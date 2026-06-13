@@ -1,5 +1,7 @@
 package com.nastech.nasux.app;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -252,6 +254,7 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
         setToggleKeyboardView();
 
         setNasTechButtonViews();
+        setupNasTechFab();
 
         registerForContextMenu(mTerminalView);
 
@@ -325,6 +328,55 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
 
         // Apply user-selected theme background every resume (catches theme changes)
         applyNasUXTheme();
+    }
+
+    /** NasTech AI FAB — glowing teal button that hovers over the terminal. */
+    private void setupNasTechFab() {
+        View fab = findViewById(R.id.nastech_fab);
+        if (fab == null) return;
+
+        float density = getResources().getDisplayMetrics().density;
+
+        // Pulse: scale breathes 1.0 → 1.12 → 1.0 continuously
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(fab, "scaleX", 1f, 1.12f, 1f);
+        scaleX.setDuration(2200);
+        scaleX.setRepeatCount(ValueAnimator.INFINITE);
+        scaleX.setRepeatMode(ValueAnimator.RESTART);
+        scaleX.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(fab, "scaleY", 1f, 1.12f, 1f);
+        scaleY.setDuration(2200);
+        scaleY.setRepeatCount(ValueAnimator.INFINITE);
+        scaleY.setRepeatMode(ValueAnimator.RESTART);
+        scaleY.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+
+        // Glow: elevation pulses 10dp → 24dp → 10dp (casts bigger/brighter shadow)
+        ObjectAnimator elevAnim = ObjectAnimator.ofFloat(fab, "elevation",
+            10f * density, 24f * density, 10f * density);
+        elevAnim.setDuration(2200);
+        elevAnim.setRepeatCount(ValueAnimator.INFINITE);
+        elevAnim.setRepeatMode(ValueAnimator.RESTART);
+        elevAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+
+        scaleX.start();
+        scaleY.start();
+        elevAnim.start();
+
+        // Tap: open AI session immediately, close drawer if open
+        fab.setOnClickListener(v -> {
+            if (getDrawer().isDrawerOpen(android.view.Gravity.START)) {
+                getDrawer().closeDrawers();
+            }
+            NasUXThemeManager.logNasTechEvent(this, "fab_summon_ai", "user");
+            runNasTechCommand("bash ~/nastech-agent/start.sh\n", "NasTech AI");
+        });
+
+        // Long press: toggle FAB visibility with a slide-out animation
+        fab.setOnLongClickListener(v -> {
+            Toast.makeText(this, "NasTech AI — tap to summon, long-press to hide",
+                Toast.LENGTH_SHORT).show();
+            return true;
+        });
     }
 
     /** Applies the user's saved theme (background color or wallpaper) to the terminal view. */

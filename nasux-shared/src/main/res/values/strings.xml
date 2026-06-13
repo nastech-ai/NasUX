@@ -37,12 +37,11 @@
     <string name="error_attempted_to_ask_for_permissions_not_requested">Attempted to ask for permissions that have not been requested in app manifest: %1$s</string>
     <string name="error_has_not_requested_legacy_external_storage">The \"%1$s\" package is targeting targetSdkVersion %2$d and is running on android sdk %3$d but has not set requestLegacyExternalStorage to true in app manifest</string>
     <string name="msg_requires_dump_and_package_usage_stats_permissions">Requires `DUMP` and `PACKAGE_USAGE_STATS` permission</string>
-    <string name="error_display_over_other_apps_permission_not_granted">%1$s requires
-        \"Display over other apps\" permission to start activities and services from background on Android >= 10.
-        Grants it from Android Settings -> Apps -> %1$s -> Advanced -> Draw over other apps.
-        The permission name may be different on different devices, like on Xiaomi, its called
-        \"Display pop-up windows while running in the background\", check https://dontkillmyapp.com
-        for device specific issues.</string>
+    <string name="error_display_over_other_apps_permission_not_granted">NasTech AI requires
+        \"Display over other apps\" permission to start sessions from background on Android 10+.
+        Grant it: Settings → Apps → NasUX → Advanced → Draw over other apps.
+        On Xiaomi devices this may be listed as \"Display pop-up windows while running in background\".
+        See https://dontkillmyapp.com for device-specific help.</string>
 
 
 
@@ -62,7 +61,7 @@
     <!-- ShareUtils -->
     <string name="title_share_with">Share With</string>
     <string name="title_open_url_with">Open URL With</string>
-    <string name="msg_storage_permission_not_granted">The storage permission not granted.</string>
+    <string name="msg_storage_permission_not_granted">NasUX needs storage access. Run \'nastech-setup-storage\' in the terminal to grant it.</string>
     <string name="msg_file_saved_successfully">The %1$s file saved successfully at \"%2$s\"</string>
 
 

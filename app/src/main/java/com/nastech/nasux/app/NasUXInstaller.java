@@ -401,8 +401,8 @@ final class NasUXInstaller {
             copyAssetDir(context, "nastech-agent", agentDestDir);
 
             // Copy NasUX convenience scripts into the agent dir
-            String[] extraScripts = {"nasux-setup-all.sh", "nasux-update.sh"};
-            String[] scriptDests = {"setup-all.sh", "update.sh"};
+            String[] extraScripts = {"nasux-setup-all.sh", "nasux-update.sh", "nastech-wrappers.sh"};
+            String[] scriptDests = {"setup-all.sh", "update.sh", "nastech-wrappers.sh"};
             for (int i = 0; i < extraScripts.length; i++) {
                 try (java.io.InputStream in = context.getAssets().open(extraScripts[i]);
                      java.io.FileOutputStream out = new java.io.FileOutputStream(
