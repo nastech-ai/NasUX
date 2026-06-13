@@ -329,21 +329,20 @@ def parse_reasoning_effort(effort: str) -> dict | None:
     return None
 
 
-_termux_cache: bool | None = None
 _nasux_cache: bool | None = None
-_termux_proot_cache: bool | None = None
+_nasux_terminal_cache: bool | None = None
+_nasux_proot_cache: bool | None = None
 
 
 def is_nasux() -> bool:
     """Return True when running inside a **NasUX** Android terminal environment.
 
-    NasUX is a rebranded fork of Termux powered by NasTech AI.  Detection
-    checks four signals in priority order:
+    NasUX is an Android terminal emulator powered by NasTech AI. Detection
+    checks three signals in priority order:
 
       1. ``NASUX_VERSION`` env var — set by the NasUX bootstrap
       2. ``PREFIX`` path contains ``com.nastech.nasux/files/usr``
       3. ``NASUX_APP_PACKAGE_NAME`` env var — set when NasUX:API is installed
-      4. ``NASUX_VERSION`` == ``TERMUX_VERSION`` shared bootstrap fallback
 
     Result is module-level cached after the first call.
     """
@@ -359,111 +358,120 @@ def is_nasux() -> bool:
     return _nasux_cache
 
 
-def is_termux() -> bool:
-    """Return True when running inside a **native** Termux or NasUX Android environment.
+def is_android_terminal() -> bool:
+    """Return True when running inside any Android terminal environment (NasUX or compatible).
 
-    NasUX is a NasTech AI-powered fork of Termux — both use the same package
-    ABI and bootstrap format, so they are treated identically here.
+    NasUX is the primary supported platform. Detection also covers compatible
+    Android terminal environments that share the same package ABI and bootstrap
+    format (env vars ``NASUX_VERSION``, ``TERMUX_VERSION``, or compatible PREFIX).
 
     Checks signals in priority order for sub-millisecond detection:
-      1. NasUX-specific: ``NASUX_VERSION`` / ``com.nastech.nasux/files/usr``
-      2. ``TERMUX_VERSION`` env var — set by every Termux/NasUX bootstrap ≥0.49
-      3. ``PREFIX`` path contains ``com.termux/files/usr``
-      4. ``TERMUX_APP_PACKAGE_NAME`` env var — set when Termux:API is installed
+      1. NasUX: ``NASUX_VERSION`` / ``com.nastech.nasux/files/usr``
+      2. ``TERMUX_VERSION`` env var (bootstrap compat)
+      3. ``PREFIX`` path contains ``com.termux/files/usr`` (bootstrap compat)
+      4. ``TERMUX_APP_PACKAGE_NAME`` env var (bootstrap compat)
 
     Result is module-level cached after the first call so repeated checks
     (e.g. in the agent loop) cost a single dict lookup.  Import-safe — no
     heavy deps, no subprocess.
     """
-    global _termux_cache
-    if _termux_cache is not None:
-        return _termux_cache
+    global _nasux_terminal_cache
+    if _nasux_terminal_cache is not None:
+        return _nasux_terminal_cache
     prefix = os.getenv("PREFIX", "")
-    _termux_cache = bool(
+    _nasux_terminal_cache = bool(
         is_nasux()
         or os.getenv("TERMUX_VERSION")
         or "com.termux/files/usr" in prefix
         or os.getenv("TERMUX_APP_PACKAGE_NAME", "").startswith("com.termux")
     )
-    return _termux_cache
+    return _nasux_terminal_cache
 
 
-def is_termux_proot_distro() -> bool:
-    """Return True when running inside a proot-distro Linux container under Termux.
+# Backward-compatibility alias
+is_termux = is_android_terminal
 
-    ``proot-distro`` lets Termux users install full Linux distros (Ubuntu,
+
+def is_nasux_proot_distro() -> bool:
+    """Return True when running inside a proot-distro Linux container on Android.
+
+    ``proot-distro`` lets NasUX users install full Linux distros (Ubuntu,
     Debian, Arch, Fedora, …) and enter them via ``proot-distro login``.
     From *inside* the container, ``sys.platform`` is ``"linux"``,
-    ``/etc/os-release`` reports the Linux distro, and ``TERMUX_VERSION`` is
+    ``/etc/os-release`` reports the Linux distro, and ``NASUX_VERSION`` is
     unset — so naive detection treats it as a regular Linux desktop and then
     fails trying to install system packages with ``apt``/``systemd``.
 
     This function catches that case so callers can:
-      * Report the correct Linux distro name while flagging it as mobile Termux
+      * Report the correct Linux distro name while flagging it as NasUX/mobile
       * Skip system-level ``apt``/``dpkg``/``systemd`` operations
       * Explain *why* Linux-native deps won't install (no root, no systemd)
 
     Detection signals (checked in order, fastest first):
       1. ``PROOT_LOADER`` / ``PROOT_TMP_DIR`` env vars — set by proot itself
-      2. ``/data/data/com.termux`` directory visible via PRoot bind-mounts
+      2. ``/data/data/com.nastech.nasux`` or compatible data dir via PRoot bind-mounts
       3. Android kernel strings in ``/proc/version`` (slow path, last resort)
 
-    NOTE: returns ``False`` when :func:`is_termux` is already ``True`` (no
-    need to distinguish native Termux from proot there).
+    NOTE: returns ``False`` when :func:`is_android_terminal` is already ``True`` (no
+    need to distinguish native NasUX from proot there).
     """
-    global _termux_proot_cache
-    if _termux_proot_cache is not None:
-        return _termux_proot_cache
+    global _nasux_proot_cache
+    if _nasux_proot_cache is not None:
+        return _nasux_proot_cache
 
-    if is_termux():
-        _termux_proot_cache = False
+    if is_android_terminal():
+        _nasux_proot_cache = False
         return False
 
     if os.getenv("PROOT_LOADER") or os.getenv("PROOT_TMP_DIR"):
-        _termux_proot_cache = True
+        _nasux_proot_cache = True
         return True
 
-    if os.path.isdir("/data/data/com.termux") or os.path.isdir("/data/data/com.nastech.nasux"):
-        _termux_proot_cache = True
+    if os.path.isdir("/data/data/com.nastech.nasux") or os.path.isdir("/data/data/com.termux"):
+        _nasux_proot_cache = True
         return True
 
     try:
         from pathlib import Path as _Path
         proc_ver = _Path("/proc/version").read_text(encoding="utf-8", errors="replace").lower()
         if any(hint in proc_ver for hint in ("android", "qualcomm", "exynos", "mediatek", "kirin")):
-            _termux_proot_cache = True
+            _nasux_proot_cache = True
             return True
     except OSError:
         pass
 
-    _termux_proot_cache = False
+    _nasux_proot_cache = False
     return False
+
+
+# Backward-compatibility alias
+is_termux_proot_distro = is_nasux_proot_distro
 
 
 def get_environment_type() -> str:
     """Return a short canonical string describing the current runtime environment.
 
     Returns one of:
-      ``"nasux"``         — native NasUX (NasTech AI) on Android
-      ``"termux"``        — native Termux on Android
-      ``"termux-proot"``  — Linux distro container inside Termux/NasUX (proot-distro)
-      ``"wsl"``           — Windows Subsystem for Linux
-      ``"linux"``         — native Linux desktop/server
-      ``"macos"``         — macOS
-      ``"windows"``       — Windows (native Python, not WSL)
-      ``"unknown"``       — anything else
+      ``"nasux"``          — native NasUX (NasTech AI) on Android
+      ``"android-terminal"`` — compatible Android terminal environment
+      ``"android-proot"``  — Linux distro container inside NasUX via proot-distro
+      ``"wsl"``            — Windows Subsystem for Linux
+      ``"linux"``          — native Linux desktop/server
+      ``"macos"``          — macOS
+      ``"windows"``        — Windows (native Python, not WSL)
+      ``"unknown"``        — anything else
 
     Use this instead of scattered ``sys.platform`` checks when you need to
-    distinguish mobile-Termux/NasUX from a real Linux server — especially for
+    distinguish NasUX/Android from a real Linux server — especially for
     install dependency logic.
     """
     import sys as _sys
     if is_nasux():
         return "nasux"
-    if is_termux():
-        return "termux"
-    if is_termux_proot_distro():
-        return "termux-proot"
+    if is_android_terminal():
+        return "android-terminal"
+    if is_nasux_proot_distro():
+        return "android-proot"
     if is_wsl():
         return "wsl"
     plat = _sys.platform
