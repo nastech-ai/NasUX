@@ -1,0 +1,182 @@
+name: Changelog Generator
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to generate changelog for (e.g. v0.120.0)'
+        required: false
+        default: ''
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate-changelog:
+    name: Generate & Commit CHANGELOG
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG"         >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG  Version: $VERSION"
+
+      - name: Generate changelog entry
+        id: changelog
+        shell: bash
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          VERSION="${{ steps.tag.outputs.version }}"
+          DATE=$(date -u +"%Y-%m-%d")
+
+          # Find the previous tag to diff from
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${TAG}$" | head -1 || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+            echo "No previous tag found — using full history"
+          else
+            RANGE="${PREV_TAG}..${TAG}"
+            echo "Diff range: $PREV_TAG → $TAG"
+          fi
+
+          # Collect commits in range, excluding bot/ci commits
+          COMMITS=$(git log "$RANGE" \
+            --pretty=format:"%s|||%H|||%an" \
+            --no-merges \
+            | grep -v '\[skip ci\]' \
+            | grep -v 'auto-update\|Auto-update\|chore(bot)\|fix(bot)\|fix(ci)' \
+            || true)
+
+          # Categorise by conventional commit prefix
+          FEATURES=""
+          FIXES=""
+          SECURITY=""
+          PERFORMANCE=""
+          CHORES=""
+          OTHER=""
+
+          while IFS='|||' read -r subject sha author; do
+            [ -z "$subject" ] && continue
+            SHORT="${sha:0:7}"
+            LINE="- ${subject} (\`${SHORT}\`)"
+
+            if echo "$subject" | grep -qiE '^feat(\(.+\))?!?:'; then
+              FEATURES="${FEATURES}\n${LINE}"
+            elif echo "$subject" | grep -qiE '^fix(\(.+\))?!?:'; then
+              FIXES="${FIXES}\n${LINE}"
+            elif echo "$subject" | grep -qiE '^sec(\(.+\))?!?:|security'; then
+              SECURITY="${SECURITY}\n${LINE}"
+            elif echo "$subject" | grep -qiE '^perf(\(.+\))?!?:'; then
+              PERFORMANCE="${PERFORMANCE}\n${LINE}"
+            elif echo "$subject" | grep -qiE '^chore|^ci|^build|^refactor|^docs|^style|^test'; then
+              CHORES="${CHORES}\n${LINE}"
+            else
+              OTHER="${OTHER}\n${LINE}"
+            fi
+          done <<< "$COMMITS"
+
+          # Build the new entry
+          ENTRY="## [${VERSION}] — ${DATE}\n"
+          ENTRY="${ENTRY}\n"
+
+          if [ -n "$FEATURES" ]; then
+            ENTRY="${ENTRY}### ✨ New Features\n$(echo -e "$FEATURES")\n\n"
+          fi
+          if [ -n "$FIXES" ]; then
+            ENTRY="${ENTRY}### 🐛 Bug Fixes\n$(echo -e "$FIXES")\n\n"
+          fi
+          if [ -n "$SECURITY" ]; then
+            ENTRY="${ENTRY}### 🔒 Security\n$(echo -e "$SECURITY")\n\n"
+          fi
+          if [ -n "$PERFORMANCE" ]; then
+            ENTRY="${ENTRY}### ⚡ Performance\n$(echo -e "$PERFORMANCE")\n\n"
+          fi
+          if [ -n "$OTHER" ]; then
+            ENTRY="${ENTRY}### 🔧 Other Changes\n$(echo -e "$OTHER")\n\n"
+          fi
+          if [ -n "$CHORES" ]; then
+            ENTRY="${ENTRY}### 🏗️ Build & CI\n$(echo -e "$CHORES")\n\n"
+          fi
+
+          if [ -z "$FEATURES$FIXES$SECURITY$PERFORMANCE$OTHER$CHORES" ]; then
+            ENTRY="${ENTRY}_No notable changes in this release._\n\n"
+          fi
+
+          if [ -n "$PREV_TAG" ]; then
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${TAG}"
+            ENTRY="${ENTRY}**Full diff:** [${PREV_TAG} → ${TAG}](${COMPARE_URL})\n"
+          fi
+
+          # Save entry to a temp file (avoids escaping issues)
+          echo -e "$ENTRY" > /tmp/new_entry.md
+          echo "Entry generated:"
+          cat /tmp/new_entry.md
+
+          # Prepend to existing CHANGELOG.md
+          HEADER="# NasUX Changelog\n\nAll notable changes are documented here.\nFormat follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).\n\n---\n\n"
+
+          if [ -f CHANGELOG.md ]; then
+            # Insert new entry after the header block
+            EXISTING=$(cat CHANGELOG.md)
+            # Strip the header lines if present, then re-prepend
+            BODY=$(echo "$EXISTING" | sed '/^# NasUX Changelog/,/^---$/d' | sed '/^$/{ /./!d }' | sed '1{/^$/d}')
+            { echo -e "$HEADER"; cat /tmp/new_entry.md; echo "---"; echo ""; echo "$BODY"; } > CHANGELOG.md
+          else
+            { echo -e "$HEADER"; cat /tmp/new_entry.md; } > CHANGELOG.md
+          fi
+
+          echo "✅ CHANGELOG.md updated."
+
+      - name: Commit CHANGELOG back to master
+        shell: bash
+        run: |
+          git config user.name  "NasTech AI Bot"
+          git config user.email "nastech-bot@users.noreply.github.com"
+
+          git add CHANGELOG.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git stash
+            git checkout master || git checkout main
+            git stash pop || true
+            git add CHANGELOG.md
+            git commit -m "docs: update CHANGELOG for ${{ steps.tag.outputs.tag }} [skip ci]"
+            git push origin HEAD
+            echo "✅ CHANGELOG committed to master."
+          fi
+
+      - name: Add changelog to release body
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            NOTES=$(cat /tmp/new_entry.md)
+            gh release edit "$TAG" --notes "$NOTES" || true
+            echo "✅ Release notes updated."
+          else
+            echo "ℹ️  No release found for $TAG — skipping release notes update."
+          fi

@@ -1,0 +1,336 @@
+name: NasUX Auto-Publish
+
+on:
+  workflow_run:
+    workflows: ["Build NasUX"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish even without a new commit'
+        required: false
+        default: 'false'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+
+  # ── Gate: only proceed when the triggering build passed ──────────────────────
+  gate:
+    name: Check Build Status
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      build_sha:      ${{ steps.check.outputs.build_sha }}
+      version_name:   ${{ steps.check.outputs.version_name }}
+      version_code:   ${{ steps.check.outputs.version_code }}
+    steps:
+      - name: Evaluate trigger
+        id: check
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "build_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "build_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "Build did not pass (conclusion: ${{ github.event.workflow_run.conclusion }}) — skipping publish."
+          fi
+
+      - name: Checkout to read version
+        if: steps.check.outputs.should_publish == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.check.outputs.build_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Extract version
+        if: steps.check.outputs.should_publish == 'true'
+        id: version
+        shell: bash
+        run: |
+          VERSION_NAME=$(grep -m1 'versionName "' app/build.gradle | grep -oP '(?<=versionName ")[^"]+')
+          VERSION_CODE=$(grep -m1 'versionCode ' app/build.gradle | grep -oP '\d+')
+          SHA="${{ steps.check.outputs.build_sha || github.sha }}"
+          echo "version_name=$VERSION_NAME"          >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE"          >> $GITHUB_OUTPUT
+          echo "release_tag=v${VERSION_NAME}+${SHA:0:7}" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION_NAME (code $VERSION_CODE) @ ${SHA:0:7}"
+
+  # ── Build release APKs for both package variants ──────────────────────────────
+  build-apks:
+    name: Build APKs (${{ matrix.package_variant }})
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.should_publish == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        package_variant: [apt-android-7, apt-android-5]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.build_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-publish-${{ matrix.package_variant }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-publish-${{ matrix.package_variant }}-
+
+      - name: Build APKs
+        shell: bash
+        env:
+          NASUX_PACKAGE_VARIANT: ${{ matrix.package_variant }}
+        run: |
+          SHA="${{ needs.gate.outputs.build_sha || github.sha }}"
+          VERSION="${{ needs.gate.outputs.version_name }}"
+          SHORT_SHA="${SHA:0:7}"
+
+          APK_VERSION_TAG="v${VERSION}+${SHORT_SHA}-${{ matrix.package_variant }}-release"
+          APK_BASENAME="nasux-app_${APK_VERSION_TAG}"
+
+          echo "APK_VERSION_TAG=${APK_VERSION_TAG}" >> $GITHUB_ENV
+          echo "APK_BASENAME=${APK_BASENAME}"       >> $GITHUB_ENV
+
+          export NASUX_APP_VERSION_NAME="${VERSION}"
+          export NASUX_APK_VERSION_TAG="${APK_VERSION_TAG}"
+
+          echo "▶ Building NasUX $VERSION (${{ matrix.package_variant }})..."
+          ./gradlew assembleDebug --no-daemon
+
+          APK_DIR="./app/build/outputs/apk/debug"
+
+          echo "▶ Renaming APKs..."
+          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
+            SRC=$(ls "${APK_DIR}"/*${abi}*.apk 2>/dev/null | head -1 || true)
+            if [ -f "$SRC" ]; then
+              cp "$SRC" "${APK_DIR}/${APK_BASENAME}_${abi}.apk"
+              echo "  ✓ ${abi}"
+            fi
+          done
+
+          echo "▶ Generating checksums..."
+          cd "$APK_DIR"
+          sha256sum ${APK_BASENAME}_*.apk > ${APK_BASENAME}_sha256sums.txt
+          cat ${APK_BASENAME}_sha256sums.txt
+
+          echo "APK_DIR=${APK_DIR}" >> $GITHUB_ENV
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nasux-apks-${{ matrix.package_variant }}
+          path: |
+            ${{ env.APK_DIR }}/${{ env.APK_BASENAME }}_*.apk
+            ${{ env.APK_DIR }}/${{ env.APK_BASENAME }}_sha256sums.txt
+          retention-days: 90
+
+  # ── Generate changelog from commits since last release ────────────────────────
+  generate-notes:
+    name: Generate Release Notes
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.should_publish == 'true'
+    outputs:
+      notes: ${{ steps.notes.outputs.notes }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release notes
+        id: notes
+        shell: bash
+        run: |
+          VERSION="${{ needs.gate.outputs.version_name }}"
+          SHA="${{ needs.gate.outputs.build_sha || github.sha }}"
+          DATE=$(date -u +"%B %d, %Y")
+
+          # Commits since last tag, grouped by type
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            RANGE="${LAST_TAG}..HEAD"
+          else
+            RANGE="HEAD~20..HEAD"
+          fi
+
+          collect() {
+            git log "$RANGE" --pretty=format:"- %s (\`%h\`)" --no-merges \
+              | grep -i "^- ${1}" | head -20 || true
+          }
+
+          FEATURES=$(collect "feat")
+          FIXES=$(collect "fix")
+          PERF=$(collect "perf")
+          SECURITY=$(collect "sec")
+
+          NOTES="## NasUX v${VERSION} — Powered by NasTech AI\n"
+          NOTES="${NOTES}**Released:** ${DATE}  |  **Build SHA:** \`${SHA:0:7}\`\n\n"
+          NOTES="${NOTES}---\n\n"
+
+          if [ -n "$FEATURES" ]; then
+            NOTES="${NOTES}### ✨ New Features\n${FEATURES}\n\n"
+          fi
+          if [ -n "$FIXES" ]; then
+            NOTES="${NOTES}### 🐛 Bug Fixes\n${FIXES}\n\n"
+          fi
+          if [ -n "$PERF" ]; then
+            NOTES="${NOTES}### ⚡ Performance\n${PERF}\n\n"
+          fi
+          if [ -n "$SECURITY" ]; then
+            NOTES="${NOTES}### 🔒 Security\n${SECURITY}\n\n"
+          fi
+          if [ -z "$FEATURES$FIXES$PERF$SECURITY" ]; then
+            NOTES="${NOTES}### 🔧 Maintenance & Improvements\n"
+            NOTES="${NOTES}$(git log "$RANGE" --pretty=format:'- %s (\`%h\`)' --no-merges | grep -v '\[skip ci\]' | head -15 || echo '- Internal improvements and stability fixes')\n\n"
+          fi
+
+          NOTES="${NOTES}---\n\n"
+          NOTES="${NOTES}### 📲 Installation\n"
+          NOTES="${NOTES}Download the APK for your device:\n"
+          NOTES="${NOTES}| APK | Device |\n"
+          NOTES="${NOTES}|-----|--------|\n"
+          NOTES="${NOTES}| \`*_arm64-v8a.apk\` | Most modern phones (Pixel, Samsung S/A/M, OnePlus) |\n"
+          NOTES="${NOTES}| \`*_armeabi-v7a.apk\` | Older 32-bit Android devices |\n"
+          NOTES="${NOTES}| \`*_universal.apk\` | Any device (larger file) |\n"
+          NOTES="${NOTES}| \`*_x86_64.apk\` | Android emulators / x86 tablets |\n\n"
+          NOTES="${NOTES}**First run:** NasTech AI Agent installs automatically. Tap the **teal FAB** or open the sidebar to start the AI.\n\n"
+          NOTES="${NOTES}> Verify downloads against the attached \`*_sha256sums.txt\` file.\n"
+
+          # Write to file so multi-line is preserved
+          echo -e "$NOTES" > /tmp/release_notes.md
+          cat /tmp/release_notes.md
+
+          # Output for next job
+          {
+            echo 'notes<<NOTES_EOF'
+            cat /tmp/release_notes.md
+            echo 'NOTES_EOF'
+          } >> $GITHUB_OUTPUT
+
+  # ── Create GitHub Release and attach all APKs ────────────────────────────────
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [gate, build-apks, generate-notes]
+    if: needs.gate.outputs.should_publish == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./release-apks
+          merge-multiple: true
+
+      - name: List downloaded APKs
+        run: |
+          echo "=== APKs to publish ==="
+          find ./release-apks -name "*.apk" -o -name "*.txt" | sort
+
+      - name: Determine release tag
+        id: tag
+        shell: bash
+        run: |
+          SHA="${{ needs.gate.outputs.build_sha || github.sha }}"
+          VERSION="${{ needs.gate.outputs.version_name }}"
+          TAG="v${VERSION}+${SHA:0:7}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release tag: $TAG"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "NasUX ${{ steps.tag.outputs.tag }}"
+          body: ${{ needs.generate-notes.outputs.notes }}
+          files: |
+            ./release-apks/**/*.apk
+            ./release-apks/**/*sha256sums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Post a build summary to the job summary page ─────────────────────────────
+  build-summary:
+    name: Build Monitor Summary
+    runs-on: ubuntu-latest
+    needs: [gate, build-apks, generate-notes, publish-release]
+    if: always() && needs.gate.outputs.should_publish == 'true'
+
+    steps:
+      - name: Write job summary
+        shell: bash
+        run: |
+          VERSION="${{ needs.gate.outputs.version_name }}"
+          CODE="${{ needs.gate.outputs.version_code }}"
+          SHA="${{ needs.gate.outputs.build_sha || github.sha }}"
+          BUILD_STATUS="${{ needs.build-apks.result }}"
+          PUBLISH_STATUS="${{ needs.publish-release.result }}"
+
+          BUILD_ICON="✅"
+          PUBLISH_ICON="✅"
+          [ "$BUILD_STATUS"   != "success" ] && BUILD_ICON="❌"
+          [ "$PUBLISH_STATUS" != "success" ] && PUBLISH_ICON="❌"
+
+          cat >> $GITHUB_STEP_SUMMARY << SUMMARY
+          # 📦 NasUX Build Monitor
+
+          | Field | Value |
+          |---|---|
+          | **App** | NasUX — Powered by NasTech AI |
+          | **Version** | \`${VERSION}\` (code ${CODE}) |
+          | **Commit** | \`${SHA:0:7}\` |
+          | **Date** | $(date -u +"%Y-%m-%d %H:%M UTC") |
+          | **Build APKs** | ${BUILD_ICON} ${BUILD_STATUS} |
+          | **Publish Release** | ${PUBLISH_ICON} ${PUBLISH_STATUS} |
+
+          ## APK Variants Published
+          | Variant | Architecture | Notes |
+          |---|---|---|
+          | \`apt-android-7\` | all ABIs | Primary — Android 7+ bootstrap |
+          | \`apt-android-5\` | all ABIs | Legacy — Android 5+ bootstrap |
+
+          ## Per-ABI Packages
+          | File | Target Device |
+          |---|---|
+          | \`*_arm64-v8a.apk\` | Modern 64-bit phones |
+          | \`*_armeabi-v7a.apk\` | Older 32-bit phones |
+          | \`*_universal.apk\` | Any device |
+          | \`*_x86_64.apk\` | Emulators / x86 tablets |
+          | \`*_x86.apk\` | 32-bit emulators |
+
+          > Checksums: see attached \`*_sha256sums.txt\` in the release.
+          SUMMARY
+
+          echo "✅ Build summary written."
