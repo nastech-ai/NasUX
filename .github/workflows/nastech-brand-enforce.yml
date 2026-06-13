@@ -68,6 +68,7 @@ jobs:
               | grep -v "nastech-wrappers" \
               | grep -v "apt_info_script" \
               | grep -v "# .*termux" \
+              | grep -v "termux/termux-packages" \
               || true)
 
           if [ -n "$FOUND" ]; then

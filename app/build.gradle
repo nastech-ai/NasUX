@@ -191,7 +191,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
         }
     }
 
-    def remoteUrl = "https://github.com/nasux/nasux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
+    def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
     logger.quiet("Downloading " + remoteUrl + " ...")
 
     file.parentFile.mkdirs()
@@ -237,17 +237,19 @@ task downloadBootstraps() {
     doLast {
         def packageVariant = project.ext.packageVariant
         if (packageVariant == "apt-android-7") {
-            def version = "2026.02.12-r1" + "%2B" + "apt.android-7"
-            downloadBootstrap("aarch64", "ea2aeba8819e517db711f8c32369e89e7c52cee73e07930ff91185e1ab93f4f3", version)
-            downloadBootstrap("arm", "a38f4d3b2f735f83be2bf54eff463e86dc32a3e2f9f861c1557c4378d249c018", version)
-            downloadBootstrap("i686", "f5bc0b025b9f3b420b5fcaeefc064f888f5f22a0d6fd7090f4aac0c33eb3555b", version)
-            downloadBootstrap("x86_64", "b7fd0f2e3a4de534be3144f9f91acc768630fc463eaf134ab2e64c545e834f7a", version)
+            // bootstrap-2026.06.07-r1+apt.android-7 (latest; checksums verified at build time)
+            def version = "2026.06.07-r1" + "%2B" + "apt.android-7"
+            downloadBootstrap("aarch64", "9478e5749edbc6bce643e146f8966e8eb44894b4480885fdcb29112522063611", version)
+            downloadBootstrap("arm",     "2428084a6a6a93bbcdeea829ebfe9db1d37115301a75889696f0292da75a8586", version)
+            downloadBootstrap("i686",    "e5b368053917a8f305bfb1a5ebbf8bd00b580c8d0635466c5b9aad5506ee93f7", version)
+            downloadBootstrap("x86_64",  "cc0149dcf517ed52ce7f15d02b2efbe7ff9b44ceb9c734513599c7be7c28922e", version)
         } else if (packageVariant == "apt-android-5") {
-            def version = "2022.04.28-r6" + "+" + packageVariant
-            downloadBootstrap("aarch64", "913609d439415c828c5640be1b0561467e539cb1c7080662decaaca2fb4820e7", version)
-            downloadBootstrap("arm", "26bfb45304c946170db69108e5eb6e3641aad751406ce106c80df80cad2eccf8", version)
-            downloadBootstrap("i686", "46dcfeb5eef67ba765498db9fe4c50dc4690805139aa0dd141a9d8ee0693cd27", version)
-            downloadBootstrap("x86_64", "615b590679ee6cd885b7fd2ff9473c845e920f9b422f790bb158c63fe42b8481", version)
+            // apt-android-5 uses the same bootstrap as apt-android-7 (minSdk=24, Android 7+)
+            def version = "2026.06.07-r1" + "%2B" + "apt.android-7"
+            downloadBootstrap("aarch64", "9478e5749edbc6bce643e146f8966e8eb44894b4480885fdcb29112522063611", version)
+            downloadBootstrap("arm",     "2428084a6a6a93bbcdeea829ebfe9db1d37115301a75889696f0292da75a8586", version)
+            downloadBootstrap("i686",    "e5b368053917a8f305bfb1a5ebbf8bd00b580c8d0635466c5b9aad5506ee93f7", version)
+            downloadBootstrap("x86_64",  "cc0149dcf517ed52ce7f15d02b2efbe7ff9b44ceb9c734513599c7be7c28922e", version)
         } else {
             throw new GradleException("Unsupported NASUX_PACKAGE_VARIANT \"" + packageVariant + "\"")
         }
