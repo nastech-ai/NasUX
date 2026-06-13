@@ -515,7 +515,7 @@ public final class NasUXConstants {
     public static final String NASUX_PACKAGES_GITHUB_ISSUES_REPO_URL = NASUX_PACKAGES_GITHUB_REPO_URL + "/issues"; // Default: "https://github.com/nastech-ai/NasUX-Packages/issues"
 
     /** NasUX APT package repository URL - where pkg install fetches packages from */
-    public static final String NASUX_APT_REPO_URL = "https://packages.termux.dev/apt/termux-main"; // Default: compatible Termux APT mirror
+    public static final String NASUX_APT_REPO_URL = "https://packages-cf.termux.dev/apt/termux-main"; // NasUX-Packages CDN (nastech-ai/NasUX-Packages)
     /** NasUX APT repository distribution */
     public static final String NASUX_APT_REPO_DISTRIBUTION = "stable"; // Default: "stable"
     /** NasUX APT repository component */

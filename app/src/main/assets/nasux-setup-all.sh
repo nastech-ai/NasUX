@@ -114,9 +114,9 @@ SYSTEM_PKGS=(
     nasux-utils
 )
 
-# NasUX core tools (internal pkg name: termux-tools) — provides system utilities
+# NasUX core system tools (nasux-tools provides terminal utilities, manpages, pkg wrappers)
 NASUX_CORE_PKGS=(
-    termux-tools
+    nasux-tools
 )
 
 info "Installing ${#SYSTEM_PKGS[@]} system packages…"

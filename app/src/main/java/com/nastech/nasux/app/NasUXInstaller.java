@@ -395,9 +395,8 @@ final class NasUXInstaller {
 
             String sourcesContent =
                 "# NasUX Package Repository — powered by NasTech AI\n" +
-                "# Packages built from: https://github.com/nastech-ai/NasUX-Packages\n" +
-                "# NasUX-compatible main package channel:\n" +
-                "deb https://packages.termux.dev/apt/termux-main stable main\n";
+                "# Source: https://github.com/nastech-ai/NasUX-Packages\n" +
+                "deb https://packages-cf.termux.dev/apt/termux-main stable main\n";
 
             try (java.io.FileOutputStream fos = new java.io.FileOutputStream(sourcesFile)) {
                 fos.write(sourcesContent.getBytes("UTF-8"));
