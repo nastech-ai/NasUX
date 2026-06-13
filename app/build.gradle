@@ -190,7 +190,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
         }
     }
 
-    def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
+    def remoteUrl = "https://github.com/nastech-ai/NasUX-Packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
     logger.quiet("Downloading " + remoteUrl + " ...")
 
     file.parentFile.mkdirs()
@@ -214,7 +214,7 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     } catch (java.io.FileNotFoundException e) {
         logger.warn("WARNING: Bootstrap not available at " + remoteUrl + " (404). " +
             "Creating placeholder zip for CI build. The resulting APK will not be functional " +
-            "until real bootstrap zips are published to nasux/nasux-packages releases.")
+            "until real bootstrap zips are published to nastech-ai/NasUX-Packages releases.")
         // Create a minimal valid empty ZIP so .incbin in nasux-bootstrap-zip.S can compile
         new java.util.zip.ZipOutputStream(new FileOutputStream(file)).close()
     } catch (java.net.ConnectException | java.net.UnknownHostException e) {
