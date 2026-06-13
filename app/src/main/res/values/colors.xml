@@ -1,3 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- ── Base ── -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- ── Core AMOLED palette ── -->
+    <color name="amoled_bg">#FF000000</color>
+    <color name="surface_0">#FF0A0A0A</color>
+    <color name="surface_1">#FF111111</color>
+    <color name="surface_2">#FF1A1A1A</color>
+    <color name="sidebar_bg">#FF0D0D0D</color>
+    <color name="terminal_bg">#FF000000</color>
+    <color name="toolbar_bg">#FF0D0D0D</color>
+
+    <!-- ── NasTech AI accent (teal) ── -->
+    <color name="nastech_accent">#FF00C8B8</color>
+    <color name="nastech_accent_dim">#8000C8B8</color>
+    <color name="nastech_accent_dark">#FF008C80</color>
+    <color name="nastech_amber">#FFFFB300</color>
+    <color name="nastech_blue">#FF4FC3F7</color>
+
+    <!-- ── Text colours ── -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FFAAAAAA</color>
+    <color name="text_disabled">#FF555555</color>
+    <color name="text_accent">#FF00C8B8</color>
+    <color name="text_error">#FFFF5555</color>
+    <color name="text_warning">#FFFFB86C</color>
+    <color name="text_success">#FF50FA7B</color>
+    <color name="terminal_green">#FF50FA7B</color>
+    <color name="session_text">#FFDDDDDD</color>
+
+    <!-- ── Extra-keys bar ── -->
+    <color name="extra_keys_bg">#FF111111</color>
+    <color name="extra_keys_active_bg">#FF1E3D3A</color>
+    <color name="extra_keys_text">#FFCCCCCC</color>
+    <color name="extra_keys_active_text">#FF00C8B8</color>
+
+    <!-- ── Dividers / borders ── -->
+    <color name="divider">#FF222222</color>
+    <color name="border_accent">#3300C8B8</color>
+
+    <!-- ── Status / icon tints ── -->
+    <color name="icon_tint_normal">#FFAAAAAA</color>
+    <color name="icon_tint_active">#FF00C8B8</color>
+
+    <!-- ── Ripple / overlay ── -->
+    <color name="ripple_light">#1AFFFFFF</color>
+    <color name="ripple_accent">#2000C8B8</color>
+
+    <!-- ── Markdown / report view ── -->
+    <color name="background_markdown_code_block">#FF111111</color>
+    <color name="blue_link_dark">#FF4FC3F7</color>
+    <color name="blue_link_light">#FF0277BD</color>
+
+    <!-- ── Material design defaults (used by nasux-shared) ── -->
+    <color name="design_default_color_surface">#FF111111</color>
+    <color name="design_default_color_on_surface">#FFFFFFFF</color>
+    <color name="grey_900">#FF212121</color>
+    <color name="red_400">#FFEF5350</color>
+    <color name="red_800">#FFC62828</color>
+
 </resources>
