@@ -47,6 +47,7 @@ SKIP_FILES = {
     "nastech_branding_bot.yml",       # old bot workflow (patterns inside)
     "BRANDING.md",                    # branding reference map — lists old names intentionally
     "CHANGELOG.md",                   # historical log — may reference old names
+    "patch-bootstrap.py",             # patcher tool — contains termux as search patterns
 }
 
 # File extensions eligible for scanning
