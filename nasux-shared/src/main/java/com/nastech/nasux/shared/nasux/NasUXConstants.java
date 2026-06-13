@@ -331,9 +331,9 @@ public final class NasUXConstants {
      */
 
     /** NasUX GitHub organization name */
-    public static final String NASUX_GITHUB_ORGANIZATION_NAME = "nasux"; // Default: "nasux"
+    public static final String NASUX_GITHUB_ORGANIZATION_NAME = "nastech-ai"; // Default: "nastech-ai"
     /** NasUX GitHub organization url */
-    public static final String NASUX_GITHUB_ORGANIZATION_URL = "https://github.com" + "/" + NASUX_GITHUB_ORGANIZATION_NAME; // Default: "https://github.com/nasux"
+    public static final String NASUX_GITHUB_ORGANIZATION_URL = "https://github.com" + "/" + NASUX_GITHUB_ORGANIZATION_NAME; // Default: "https://github.com/nastech-ai"
 
     /** F-Droid packages base url */
     public static final String FDROID_PACKAGES_BASE_URL = "https://f-droid.org/en/packages"; // Default: "https://f-droid.org/en/packages"
@@ -351,11 +351,11 @@ public final class NasUXConstants {
     /** NasUX package name */
     public static final String NASUX_PACKAGE_NAME = "com.nastech.nasux"; // Default: "com.nastech.nasux"
     /** NasUX GitHub repo name */
-    public static final String NASUX_GITHUB_REPO_NAME = "nasux-app"; // Default: "nasux-app"
+    public static final String NASUX_GITHUB_REPO_NAME = "NasUX"; // Default: "NasUX"
     /** NasUX GitHub repo url */
-    public static final String NASUX_GITHUB_REPO_URL = NASUX_GITHUB_ORGANIZATION_URL + "/" + NASUX_GITHUB_REPO_NAME; // Default: "https://github.com/nasux/nasux-app"
+    public static final String NASUX_GITHUB_REPO_URL = NASUX_GITHUB_ORGANIZATION_URL + "/" + NASUX_GITHUB_REPO_NAME; // Default: "https://github.com/nastech-ai/NasUX"
     /** NasUX GitHub issues repo url */
-    public static final String NASUX_GITHUB_ISSUES_REPO_URL = NASUX_GITHUB_REPO_URL + "/issues"; // Default: "https://github.com/nasux/nasux-app/issues"
+    public static final String NASUX_GITHUB_ISSUES_REPO_URL = NASUX_GITHUB_REPO_URL + "/issues"; // Default: "https://github.com/nastech-ai/NasUX/issues"
     /** NasUX F-Droid package url */
     public static final String NASUX_FDROID_PACKAGE_URL = FDROID_PACKAGES_BASE_URL + "/" + NASUX_PACKAGE_NAME; // Default: "https://f-droid.org/en/packages/com.nastech.nasux"
 
@@ -508,11 +508,18 @@ public final class NasUXConstants {
      */
 
     /** NasUX Packages GitHub repo name */
-    public static final String NASUX_PACKAGES_GITHUB_REPO_NAME = "nasux-packages"; // Default: "nasux-packages"
+    public static final String NASUX_PACKAGES_GITHUB_REPO_NAME = "NasUX-Packages"; // Default: "NasUX-Packages"
     /** NasUX Packages GitHub repo url */
-    public static final String NASUX_PACKAGES_GITHUB_REPO_URL = NASUX_GITHUB_ORGANIZATION_URL + "/" + NASUX_PACKAGES_GITHUB_REPO_NAME; // Default: "https://github.com/nasux/nasux-packages"
+    public static final String NASUX_PACKAGES_GITHUB_REPO_URL = NASUX_GITHUB_ORGANIZATION_URL + "/" + NASUX_PACKAGES_GITHUB_REPO_NAME; // Default: "https://github.com/nastech-ai/NasUX-Packages"
     /** NasUX Packages GitHub issues repo url */
-    public static final String NASUX_PACKAGES_GITHUB_ISSUES_REPO_URL = NASUX_PACKAGES_GITHUB_REPO_URL + "/issues"; // Default: "https://github.com/nasux/nasux-packages/issues"
+    public static final String NASUX_PACKAGES_GITHUB_ISSUES_REPO_URL = NASUX_PACKAGES_GITHUB_REPO_URL + "/issues"; // Default: "https://github.com/nastech-ai/NasUX-Packages/issues"
+
+    /** NasUX APT package repository URL - where pkg install fetches packages from */
+    public static final String NASUX_APT_REPO_URL = "https://packages.termux.dev/apt/termux-main"; // Default: compatible Termux APT mirror
+    /** NasUX APT repository distribution */
+    public static final String NASUX_APT_REPO_DISTRIBUTION = "stable"; // Default: "stable"
+    /** NasUX APT repository component */
+    public static final String NASUX_APT_REPO_COMPONENT = "main"; // Default: "main"
 
 
     /** NasUX API apt package name */
