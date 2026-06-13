@@ -359,17 +359,14 @@ def is_nasux() -> bool:
 
 
 def is_android_terminal() -> bool:
-    """Return True when running inside any Android terminal environment (NasUX or compatible).
+    """Return True when running inside the NasUX Android terminal environment.
 
-    NasUX is the primary supported platform. Detection also covers compatible
-    Android terminal environments that share the same package ABI and bootstrap
-    format (env vars ``NASUX_VERSION``, ``TERMUX_VERSION``, or compatible PREFIX).
-
-    Checks signals in priority order for sub-millisecond detection:
-      1. NasUX: ``NASUX_VERSION`` / ``com.nastech.nasux/files/usr``
-      2. ``TERMUX_VERSION`` env var (bootstrap compat)
-      3. ``PREFIX`` path contains ``com.termux/files/usr`` (bootstrap compat)
-      4. ``TERMUX_APP_PACKAGE_NAME`` env var (bootstrap compat)
+    NasUX is the only supported Android terminal platform. Detection checks
+    NasUX-specific signals in priority order for sub-millisecond detection:
+      1. ``NASUX_VERSION`` env var (set by NasUX bootstrap)
+      2. ``NASUX_PREFIX`` env var
+      3. ``PREFIX`` path contains ``com.nastech.nasux/files/usr``
+      4. ``NASUX_APP_PACKAGE_NAME`` env var
 
     Result is module-level cached after the first call so repeated checks
     (e.g. in the agent loop) cost a single dict lookup.  Import-safe — no
@@ -381,9 +378,10 @@ def is_android_terminal() -> bool:
     prefix = os.getenv("PREFIX", "")
     _nasux_terminal_cache = bool(
         is_nasux()
-        or os.getenv("TERMUX_VERSION")
-        or "com.termux/files/usr" in prefix
-        or os.getenv("TERMUX_APP_PACKAGE_NAME", "").startswith("com.nasux")
+        or os.getenv("NASUX_VERSION")
+        or os.getenv("NASUX_PREFIX")
+        or "com.nastech.nasux/files/usr" in prefix
+        or os.getenv("NASUX_APP_PACKAGE_NAME", "").startswith("com.nastech.nasux")
     )
     return _nasux_terminal_cache
 
@@ -423,7 +421,7 @@ def is_nasux_proot_distro() -> bool:
         _nasux_proot_cache = True
         return True
 
-    if os.path.isdir("/data/data/com.nastech.nasux") or os.path.isdir("/data/data/com.termux"):
+    if os.path.isdir("/data/data/com.nastech.nasux"):
         _nasux_proot_cache = True
         return True
 
