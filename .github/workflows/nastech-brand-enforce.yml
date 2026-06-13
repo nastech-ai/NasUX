@@ -20,39 +20,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Scan for raw Termux branding in user-facing files
+      - name: Scan for upstream branding violations
         shell: bash
         run: |
           echo "=== NasTech Brand Enforcement ==="
-          echo "Scanning for disallowed 'Termux' / 'termux' references in user-facing code…"
+          echo "Scanning for upstream branding references in NasUX source files…"
 
           VIOLATIONS=0
 
-          # Patterns that indicate raw termux branding in user-facing contexts
-          # Excludes: internal pkg-manager names (termux-tools), wrapper script internals,
-          # apt_info_script placeholders (@TERMUX_PREFIX@), and NasUX-authored comments
-          # explaining that the underlying binary is named termux-*.
-
-          EXCLUDE_PATTERNS=(
-            "termux-tools"           # internal apt package name
-            "@TERMUX_PREFIX@"        # build-time placeholder in apt_info_script
-            "termux-\$cmd"           # wrappers script variable interpolation
-            "exec.*termux-"          # exec calls inside wrappers (intentional delegation)
-            "termux-setup-storage"   # fallback inside nastech-setup-storage wrapper
-            "NasUX.*Termux\|Termux.*NasUX" # "NasUX (formerly Termux)" style refs
-            "powered.by.*nastech"    # already rebranded
-            "#.*termux"              # comment explaining underlying pkg name
-          )
-
-          # Build ripgrep exclude args
-          RG_ARGS=()
-          for p in "${EXCLUDE_PATTERNS[@]}"; do
-            RG_ARGS+=( "--glob-negate" "!**/nastech-wrappers.sh" )
-          done
-
-          # Find violations in Java, XML, strings, Gradle, Kotlin files
-          # Note: --exclude-dir matches directory NAME only (not path).
-          # "nastech-agent" excludes app/src/main/assets/nastech-agent/ (bundled docs).
+          # Find violations in Java, XML, Kotlin, Gradle, Markdown files.
+          # Excludes:
+          #   - .git / .local / .agents dirs (internal)
+          #   - nastech-agent (bundled third-party docs)
+          #   - bootstrap installer path-rewrite code (com.termux paths are matched
+          #     against embedded strings inside upstream bootstrap ZIPs — protected)
+          #   - SourceForge mirror URL in build.gradle / workflows (external project name)
+          #   - apt_info_script / nastech-wrappers.sh (delegation internals)
           FOUND=$(grep -rn --include="*.java" --include="*.xml" --include="*.kt" \
               --include="*.gradle" --include="*.md" \
               -i "termux" . \
@@ -60,30 +43,24 @@ jobs:
               --exclude-dir=".local" \
               --exclude-dir="nastech-agent" \
               --exclude-dir=".agents" \
-              | grep -v "termux-tools" \
-              | grep -v "@TERMUX_PREFIX@" \
-              | grep -v 'termux-\$cmd' \
-              | grep -v "exec.*termux-" \
-              | grep -v "termux-setup-storage" \
-              | grep -v "nastech-wrappers" \
               | grep -v "apt_info_script" \
-              | grep -v "# .*termux" \
-              | grep -v "termux/termux-packages" \
-              | grep -v "packages-cf\.termux\.dev" \
-              | grep -v "packages\.termux\.dev" \
-              | grep -v "termux-main" \
-              | grep -v "BRANDING\.md" \
+              | grep -v "nastech-wrappers" \
+              | grep -v "sourceforge\.net.*termux-packages\.mirror" \
+              | grep -v "downloads\.sourceforge\.net.*termux-packages\.mirror" \
+              | grep -v "termux-packages\.mirror" \
+              | grep -v "com\.termux.*bootstrap\|bootstrap.*com\.termux" \
+              | grep -v "\.replace.*com\.termux" \
               || true)
 
           if [ -n "$FOUND" ]; then
             echo ""
-            echo "❌ BRAND VIOLATION: Raw 'Termux' branding found in user-facing files:"
+            echo "❌ BRAND VIOLATION: Upstream branding found in NasUX source files:"
             echo "$FOUND"
             echo ""
-            echo "All user-facing text must say 'NasUX' or 'NasTech AI', not 'Termux'."
+            echo "All user-facing text must say 'NasUX' or 'NasTech AI'."
             VIOLATIONS=1
           else
-            echo "✅ No Termux branding violations found."
+            echo "✅ No branding violations found."
           fi
 
           if [ $VIOLATIONS -ne 0 ]; then
