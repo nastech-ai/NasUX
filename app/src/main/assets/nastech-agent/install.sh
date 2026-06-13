@@ -49,8 +49,8 @@ REPO_URL="https://github.com/nastech-ai/NasTech-Agent"
 is_nasux() {
     [ -n "${NASUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.nastech.nasux/files/usr"* ]]
 }
-# Legacy alias kept for internal use only
-is_termux() { is_nasux; }
+# Legacy compat alias — callers should use is_nasux() directly
+is_android_terminal() { is_nasux; }
 
 get_command_link_dir() {
     if is_nasux && [ -n "${PREFIX:-}" ]; then
