@@ -70,32 +70,33 @@ jobs:
           fi
 
           echo "Validating APKs"
-          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
-            if ! test -f "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk"; then
+          # Gradle produces NasUX-App-<Label>-<APK_VERSION_TAG>.apk
+          for abi_label in Universal ARM64 ARM32 x86_64 x86; do
+            if ! test -f "$APK_DIR_PATH/NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"; then
               files_found="$(ls "$APK_DIR_PATH")"
-              exit_on_error "Failed to find built APK at '$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk'. Files found: "$'\n'"$files_found"
+              exit_on_error "Failed to find built APK at '$APK_DIR_PATH/NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk'. Files found: "$'\n'"$files_found"
             fi
           done
 
           echo "Generating sha256sums"
           if ! (cd "$APK_DIR_PATH"; sha256sum \
-            "${APK_BASENAME_PREFIX}_universal.apk" \
-            "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
-            "${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
-            "${APK_BASENAME_PREFIX}_x86_64.apk" \
-            "${APK_BASENAME_PREFIX}_x86.apk" \
-            > "${APK_BASENAME_PREFIX}_sha256sums"); then
+            "NasUX-App-Universal-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-ARM64-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-ARM32-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-x86_64-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-x86-${APK_VERSION_TAG}.apk" \
+            > "NasUX-App-SHA256-${APK_VERSION_TAG}.txt"); then
             exit_on_error "sha256sums generation failed."
           fi
 
           echo "Attaching APKs to GitHub release"
           if ! gh release upload "$RELEASE_VERSION_NAME" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_universal.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_x86_64.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_x86.apk" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_sha256sums" \
+            "$APK_DIR_PATH/NasUX-App-Universal-${APK_VERSION_TAG}.apk" \
+            "$APK_DIR_PATH/NasUX-App-ARM64-${APK_VERSION_TAG}.apk" \
+            "$APK_DIR_PATH/NasUX-App-ARM32-${APK_VERSION_TAG}.apk" \
+            "$APK_DIR_PATH/NasUX-App-x86_64-${APK_VERSION_TAG}.apk" \
+            "$APK_DIR_PATH/NasUX-App-x86-${APK_VERSION_TAG}.apk" \
+            "$APK_DIR_PATH/NasUX-App-SHA256-${APK_VERSION_TAG}.txt" \
             --clobber; then
             exit_on_error "Attach APKs to release failed."
           fi
