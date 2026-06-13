@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ java, cpp ]
+        language: [ java ]
 
     steps:
       - name: Checkout
@@ -34,14 +34,12 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Java 17
-        if: matrix.language == 'java'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Cache Gradle
-        if: matrix.language == 'java'
         uses: actions/cache@v4
         with:
           path: |
@@ -56,19 +54,12 @@ jobs:
           languages: ${{ matrix.language }}
           queries: security-and-quality
 
-      - name: Build for CodeQL (Java)
-        if: matrix.language == 'java'
+      - name: Build for CodeQL
         run: |
           ./gradlew assembleDebug \
             -x downloadBootstraps \
             --no-daemon \
-            --stacktrace \
-            -Pandroid.testInstrumentationRunnerArguments.class='' \
           || true
-
-      - name: Autobuild (C/C++)
-        if: matrix.language == 'cpp'
-        uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

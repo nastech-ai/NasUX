@@ -246,4 +246,19 @@
     <!-- Donate Preference -->
     <string name="donate_preference_title">Donate</string>
 
+    <!-- Common dialog buttons -->
+    <string name="ok">OK</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="cancel">Cancel</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
+
+    <!-- Error messages -->
+    <string name="error_execution_cancelled">Execution cancelled</string>
+
+    <!-- Storage permission messages -->
+    <string name="msg_storage_permission_granted_on_request">Storage permission granted</string>
+    <string name="msg_storage_permission_not_granted_on_request">Storage permission not granted. Some features may not work correctly.</string>
+
 </resources>
