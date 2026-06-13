@@ -167,7 +167,13 @@ final class NasUXInstaller {
                                     String[] parts = line.split("←");
                                     if (parts.length != 2)
                                         throw new RuntimeException("Malformed symlink line: " + line);
-                                    String oldPath = parts[0];
+                                    // Rewrite any absolute paths in SYMLINKS.txt to the NasUX package prefix.
+                                    // Bootstrap ZIPs patched by scripts/patch-bootstrap.py already contain
+                                    // NasUX paths, but this guard handles any future unpatched ZIPs.
+                                    String oldPath = parts[0]
+                                        .replace("/data/data/com.nastech.nasux/files/usr/share/nasux-keyring/",
+                                                 NASUX_PREFIX_DIR_PATH + "/share/nasux-keyring/")
+                                        .replace("/data/data/com.nastech.nasux/files/", NASUX_PREFIX_DIR_PATH + "/../");
                                     String newPath = NASUX_STAGING_PREFIX_DIR_PATH + "/" + parts[1];
                                     symlinks.add(Pair.create(oldPath, newPath));
 
