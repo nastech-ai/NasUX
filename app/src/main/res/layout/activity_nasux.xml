@@ -217,6 +217,34 @@
                         android:background="@drawable/nastech_button_bg"
                         android:fontFamily="monospace" />
 
+                    <Button
+                        android:id="@+id/nastech_btn_shizuku"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_shizuku"
+                        android:textColor="#FFA040"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
+                    <Button
+                        android:id="@+id/nastech_btn_voice_mode"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_voice_mode"
+                        android:textColor="#FF6090"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
                 </LinearLayout>
 
                 <!-- Divider -->
@@ -264,6 +292,23 @@
             android:layout_height="40dp"
             android:background="@color/toolbar_bg"
             android:layout_alignParentBottom="true" />
+
+        <!-- Voice mic mini-FAB — glows red while listening, sits above main FAB -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/nastech_mic_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_above="@id/nastech_fab"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="26dp"
+            android:layout_marginBottom="8dp"
+            android:contentDescription="Voice Mode"
+            android:src="@android:drawable/ic_btn_speak_now"
+            app:backgroundTint="#FF6090"
+            app:tint="@color/black"
+            app:fabSize="mini"
+            app:elevation="8dp"
+            app:maxImageSize="20dp" />
 
         <!-- NasTech AI Floating Action Button — teal glow, hovers over terminal -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton

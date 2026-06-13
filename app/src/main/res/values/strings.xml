@@ -107,6 +107,8 @@
     <string name="nastech_btn_logs">≡  View Logs</string>
     <string name="nastech_btn_new_ai_session">+  New AI Session</string>
     <string name="nastech_btn_theme">🎨  Customize Theme</string>
+    <string name="nastech_btn_shizuku">🔑  Shizuku Permissions</string>
+    <string name="nastech_btn_voice_mode">🎤  Voice Mode</string>
     <string name="nastech_theme_settings">Theme &amp; Colors</string>
     <string name="nastech_theme_bg">Terminal Background</string>
     <string name="nastech_theme_preview">Preview</string>

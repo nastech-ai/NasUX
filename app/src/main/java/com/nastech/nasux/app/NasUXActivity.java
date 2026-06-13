@@ -36,6 +36,9 @@ import com.nastech.nasux.app.terminal.io.NasUXTerminalExtraKeys;
 import com.nastech.nasux.shared.activities.ReportActivity;
 import com.nastech.nasux.shared.activity.ActivityUtils;
 import com.nastech.nasux.shared.activity.media.AppCompatActivityUtils;
+
+import androidx.annotation.NonNull;
+import rikka.shizuku.Shizuku;
 import com.nastech.nasux.shared.data.IntentUtils;
 import com.nastech.nasux.shared.android.PermissionUtils;
 import com.nastech.nasux.shared.data.DataUtils;
@@ -109,6 +112,10 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
      * NasUX app shared preferences manager.
      */
     private NasUXAppSharedPreferences mPreferences;
+
+    // NasUX enhanced features
+    private NasUXShizukuManager mShizukuManager;
+    private NasUXVoiceManager   mVoiceManager;
 
     /**
      * NasUX app SharedProperties loaded from nasux.properties
@@ -253,8 +260,13 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
 
         setToggleKeyboardView();
 
+        // Initialise elevated-permission and voice managers
+        mShizukuManager = new NasUXShizukuManager(this);
+        mVoiceManager   = new NasUXVoiceManager(this);
+
         setNasTechButtonViews();
         setupNasTechFab();
+        setupVoiceMicFab();
 
         // Check for NasUX app updates in background (silent, once per 24h)
         new NasUXAutoUpdater(this).checkForUpdateAsync();
@@ -432,6 +444,11 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
             unbindService(this);
         } catch (Exception e) {
             // ignore.
+        }
+
+        // Release voice recognizer resources
+        if (mVoiceManager != null) {
+            mVoiceManager.destroy();
         }
     }
 
@@ -709,6 +726,64 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
                 startActivity(new android.content.Intent(this, NasUXThemeSettingsActivity.class));
             });
         }
+
+        // Shizuku elevated-permissions button
+        View shizukuBtn = findViewById(R.id.nastech_btn_shizuku);
+        if (shizukuBtn != null) {
+            shizukuBtn.setOnClickListener(v -> {
+                getDrawer().closeDrawers();
+                mShizukuManager.showShizukuDialog(this);
+            });
+        }
+
+        // Voice mode toggle button (in sidebar)
+        View voiceBtn = findViewById(R.id.nastech_btn_voice_mode);
+        if (voiceBtn != null) {
+            voiceBtn.setOnClickListener(v -> {
+                getDrawer().closeDrawers();
+                mVoiceManager.toggleMode();
+                // Start listening immediately after toggling mode
+                mVoiceManager.startListening(this, this::onVoiceResult);
+            });
+        }
+    }
+
+    /** Handle recognised voice text — type into terminal or send to NasTech AI */
+    private void onVoiceResult(String text, NasUXVoiceManager.VoiceMode mode) {
+        TerminalSession session = getCurrentSession();
+        if (session == null) return;
+
+        if (mode == NasUXVoiceManager.VoiceMode.TERMINAL) {
+            // Type the text directly into the terminal (no newline — user confirms)
+            byte[] bytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            session.write(bytes, 0, bytes.length);
+        } else {
+            // AI_CHAT: prepend "nastech ask " and send as a command
+            String cmd = "nastech ask \"" + text.replace("\"", "'") + "\"\n";
+            byte[] bytes = cmd.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            session.write(bytes, 0, bytes.length);
+        }
+        NasUXThemeManager.logNasTechEvent(this, "voice_command_sent",
+            mode.name().toLowerCase());
+    }
+
+    /** Wire the floating mic mini-FAB for hands-free voice control */
+    private void setupVoiceMicFab() {
+        View micFab = findViewById(R.id.nastech_mic_fab);
+        if (micFab == null) return;
+
+        mVoiceManager.setMicFab(micFab);
+
+        // Single tap — toggle listening in current mode
+        micFab.setOnClickListener(v ->
+            mVoiceManager.toggleListening(this, this::onVoiceResult));
+
+        // Long press — switch between Terminal / AI modes then start listening
+        micFab.setOnLongClickListener(v -> {
+            mVoiceManager.toggleMode();
+            mVoiceManager.startListening(this, this::onVoiceResult);
+            return true;
+        });
     }
 
     /**
@@ -934,6 +1009,31 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: "  + Arrays.toString(permissions) + ", grantResults: "  + Arrays.toString(grantResults));
+
+        // Voice mic permission result
+        if (requestCode == NasUXVoiceManager.REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                mVoiceManager.startListening(this, this::onVoiceResult);
+            } else {
+                Toast.makeText(this, "Microphone permission required for voice mode", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        // Shizuku permission result (Shizuku uses its own callback via addRequestPermissionResultListener,
+        // but also forwards here for apps that rely on standard Activity dispatch)
+        if (requestCode == 2025) {
+            boolean granted = grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            NasUXThemeManager.logNasTechEvent(this, "shizuku_permission_result",
+                granted ? "granted" : "denied");
+            if (granted) {
+                Toast.makeText(this, "✅ Shizuku access granted — NasUX now has elevated permissions!", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Shizuku permission denied", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         }
