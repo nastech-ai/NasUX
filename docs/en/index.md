@@ -1,13 +1,13 @@
 ---
-page_ref: /docs/apps/termux/index.html
+page_ref: /docs/apps/nasux/index.html
 ---
 
-# Termux App Docs
+# NasUX App Docs
 
 <!--- DOC_HEADER_PLACEHOLDER -->
 
-Welcome to documentation for the [Termux App].
+Welcome to documentation for the [NasUX App].
 
 ##
 
-[Termux App]: https://github.com/termux/termux-app
+[NasUX App]: https://github.com/nastech-ai/NasTech-Agent

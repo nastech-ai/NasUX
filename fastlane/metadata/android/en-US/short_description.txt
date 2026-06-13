@@ -1,1 +1,1 @@
-Terminal emulator app with a large set of command line utilities
+NasUX terminal emulator with NasTech AI Agent — Linux tools for Android, no PC needed

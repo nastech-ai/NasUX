@@ -1,4 +1,8 @@
-Termux is a terminal emulator application enhanced with a large set of command line utilities ported to Android OS. The main goal is to bring a Linux command line experience to users of mobile devices with no rooting or other special setup required.
+NasUX — Powered by NasTech AI
+
+NasUX is a terminal emulator application enhanced with a large set of command line utilities ported to Android OS. Built for users who can't afford a PC — full Linux and AI capabilities right on your Android device, no rooting or special setup required.
+
+NasUX comes with NasTech AI Agent permanently pre-installed — your AI coding assistant and automation agent, ready from first launch.
 
 * Enjoy the Bash and Zsh shells.
 * Edit files with nano and vim.
@@ -6,8 +10,11 @@ Termux is a terminal emulator application enhanced with a large set of command l
 * Compile C/C++ code with clang.
 * Use the Python console as a pocket calculator.
 * Check out projects with Git and Subversion.
+* Run NasTech AI Agent for AI-powered coding, automation, and smart commands.
 * Run text-based games with frotz.
 
 At first start a small base system is being configured. The GNU Bash, Coreutils, Findutils and other core utilities are available out-of-box. Additionally, we provide more than 1000 other packages installable by using the 'pkg' utility which currently is a frontend for the 'apt' package manager. All provided software has been patched and compiled with Android NDK to provide max compatibility with Android OS.
 
-To learn more about application usage tips and tricks, long-press anywhere on the terminal and select the Help menu option to access Termux Wiki. This resource is also accessible directly in a web browser: https://wiki.termux.com/wiki/Main_Page.
+NasTech AI Agent is automatically installed in your home directory on first launch. Run 'nastech' in the terminal to start your AI session.
+
+To learn more, visit: https://github.com/nastech-ai/NasTech-Agent

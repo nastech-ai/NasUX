@@ -1,1 +1,1 @@
-Check https://termux.dev/security for info on Termux security policies and how to report vulnerabilities.
+Check https://nasux.dev/security for info on NasUX security policies and how to report vulnerabilities.

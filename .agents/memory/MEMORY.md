@@ -1,0 +1,1 @@
+- [NasUX rebranding](nasux-rebranding.md) — Full Termux→NasUX rebrand: package com.nastech.nasux, module nasux-shared, NasTech Agent bundled in assets, auto-installs on first boot.

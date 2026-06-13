@@ -1,0 +1,18 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <Preference
+        app:title="@string/nasux_debugging_preferences_title"
+        app:summary="@string/nasux_debugging_preferences_summary"
+        app:fragment="com.nastech.nasux.app.fragments.settings.nasux.DebuggingPreferencesFragment"/>
+
+    <Preference
+        app:title="@string/nasux_terminal_io_preferences_title"
+        app:summary="@string/nasux_terminal_io_preferences_summary"
+        app:fragment="com.nastech.nasux.app.fragments.settings.nasux.TerminalIOPreferencesFragment"/>
+
+    <Preference
+        app:title="@string/nasux_terminal_view_preferences_title"
+        app:summary="@string/nasux_terminal_view_preferences_summary"
+        app:fragment="com.nastech.nasux.app.fragments.settings.nasux.TerminalViewPreferencesFragment"/>
+
+</PreferenceScreen>
