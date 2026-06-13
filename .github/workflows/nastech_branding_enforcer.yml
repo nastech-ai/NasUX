@@ -1,6 +1,6 @@
 name: NasTech Branding Enforcer
 
-on:
+"on":
   push:
     branches: [master, main]
   pull_request:
