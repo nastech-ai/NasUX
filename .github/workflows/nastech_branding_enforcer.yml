@@ -1,0 +1,165 @@
+name: NasTech Branding Enforcer
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  schedule:
+    - cron: "0 3 * * *"   # Daily 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — report only, no commits"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  enforce-branding:
+    name: Scan & Auto-Fix NasUX Branding
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout full history ──────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Run the enforcer ────────────────────────────────────────────────
+      - name: Run NasTech Branding Enforcer
+        id: enforcer
+        run: python3 .github/scripts/nastech_branding_enforcer.py
+
+      # ── 3. Upload full report as artifact ─────────────────────────────────
+      - name: Upload Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nastech-branding-report-${{ github.run_number }}
+          path: /tmp/branding_report.md
+          retention-days: 90
+
+      # ── 4. Commit & push fixes (skip on PRs and dry-run) ─────────────────
+      - name: Commit and Push Fixes
+        if: >
+          steps.enforcer.outputs.fixes_count != '0' &&
+          github.event_name != 'pull_request' &&
+          github.event.inputs.dry_run != 'true'
+        run: |
+          git config user.name  "NasTech Branding Enforcer"
+          git config user.email "nastech-bot@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            FILES=$(git diff --cached --name-only | wc -l | tr -d ' ')
+            CHANGES=${{ steps.enforcer.outputs.fixes_count }}
+            git commit -m "fix(branding): auto-fix NasUX branding [skip ci] (${CHANGES} changes across ${FILES} file(s))"
+            git push origin HEAD
+            echo "Pushed ${CHANGES} branding fixes across ${FILES} files."
+          else
+            echo "Nothing to commit — all files already clean."
+          fi
+
+      # ── 5. Post PR comment with report ───────────────────────────────────
+      - name: Comment on PR
+        if: >
+          github.event_name == 'pull_request' &&
+          steps.enforcer.outputs.fixes_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/branding_report.md', 'utf8');
+            const body = [
+              '## 🤖 NasTech Branding Enforcer',
+              '',
+              `**${context.payload.pull_request.head.sha.slice(0,8)}** — ` +
+              `**${{ steps.enforcer.outputs.fixes_count }}** branding fixes needed in ` +
+              `**${{ steps.enforcer.outputs.files_count }}** file(s).`,
+              '',
+              '<details><summary>📋 Full Report</summary>',
+              '',
+              report,
+              '',
+              '</details>',
+              '',
+              '> Fixes will be committed automatically when this PR merges.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+
+      # ── 6. Create/update tracking issue if any violations in main branch ─
+      - name: Update Tracking Issue
+        if: >
+          github.event_name != 'pull_request' &&
+          steps.enforcer.outputs.fixes_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs  = require('fs');
+            const report = fs.readFileSync('/tmp/branding_report.md', 'utf8');
+            const TITLE = 'NasTech Branding Enforcer — run summary';
+
+            // Close any existing open tracking issue
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              state: 'open',
+              labels: 'branding',
+              per_page: 20,
+            });
+            for (const issue of existing.data) {
+              if (issue.title.startsWith('NasTech Branding Enforcer')) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed',
+                });
+              }
+            }
+
+            // Create new issue with full report
+            const body = [
+              report,
+              '',
+              '---',
+              `> Auto-generated by NasTech Branding Enforcer on \`${context.ref}\``,
+            ].join('\n');
+
+            try {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                title: TITLE,
+                body:  body.slice(0, 65535),
+                labels: ['branding'],
+              });
+            } catch (e) {
+              console.log('Could not create issue (label may not exist):', e.message);
+            }
+
+      # ── 7. Final summary ──────────────────────────────────────────────────
+      - name: Summary
+        if: always()
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════════════╗"
+          echo "║   NasTech Branding Enforcer — Complete   ║"
+          echo "╠══════════════════════════════════════════╣"
+          echo "║  Files scanned  : ${{ steps.enforcer.outputs.scanned_count }}"
+          echo "║  Files modified : ${{ steps.enforcer.outputs.files_count }}"
+          echo "║  Total changes  : ${{ steps.enforcer.outputs.fixes_count }}"
+          echo "╚══════════════════════════════════════════╝"
