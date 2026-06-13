@@ -388,7 +388,7 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
 
         // Long press: open Markdown / Code Preview sheet
         fab.setOnLongClickListener(v -> {
-            NasUXMarkdownPreviewSheet.show(getSupportFragmentManager(), null);
+            NasUXMarkdownPreviewSheet.showSheet(getSupportFragmentManager(), null);
             return true;
         });
     }
