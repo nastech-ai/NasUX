@@ -224,7 +224,7 @@ NasTech Agent is an independent, fully rebranded fork. The upstream codebase is 
 **Based on upstream v2026.4.13** · 487 commits · 269 PRs · 493 files changed · 167 issues resolved · 24 contributors
 
 ### Highlights
-- **Termux / Android** — Full mobile support; NasTech runs on Android via Termux
+- **NasUX / Android** — Full mobile support; NasTech runs natively on Android via NasUX
 - **iMessage + WeChat** — Two new messaging platforms
 - **Fast Mode (`/fast`)** — Priority processing for OpenAI and Anthropic models; lower latency on GPT-5.4, Codex, Claude
 - **Background process monitoring** — Monitor long-running processes; agent gets notified on completion
