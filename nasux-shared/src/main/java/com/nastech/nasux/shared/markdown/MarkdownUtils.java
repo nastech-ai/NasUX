@@ -54,11 +54,7 @@ public class MarkdownUtils {
 
     private static Prism4j getPrism4j() {
         if (sPrism4j == null) {
-            try {
-                sPrism4j = new Prism4j(new NasUXGrammarLocator());
-            } catch (Throwable t) {
-                sPrism4j = new Prism4j(new io.noties.prism4j.GrammarLocatorDef());
-            }
+            sPrism4j = new Prism4j(new NasUXGrammarLocator());
         }
         return sPrism4j;
     }
