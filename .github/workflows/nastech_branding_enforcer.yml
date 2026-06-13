@@ -53,15 +53,22 @@ jobs:
           steps.enforcer.outputs.fixes_count != '0' &&
           github.event_name != 'pull_request' &&
           github.event.inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name  "NasTech Branding Enforcer"
           git config user.email "nastech-bot@users.noreply.github.com"
+          # Authenticate push via HTTPS with token
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git add -A
           if ! git diff --cached --quiet; then
             FILES=$(git diff --cached --name-only | wc -l | tr -d ' ')
             CHANGES=${{ steps.enforcer.outputs.fixes_count }}
-            git commit -m "fix(branding): auto-fix NasUX branding [skip ci] (${CHANGES} changes across ${FILES} file(s))"
-            git push origin HEAD
+            git commit -m "fix(branding): auto-fix NasUX branding [skip ci] (${CHANGES} changes in ${FILES} file(s))"
+            # Pull latest to avoid race-condition conflicts, then push
+            git pull --rebase origin ${{ github.ref_name }} || true
+            git push origin HEAD:${{ github.ref_name }}
             echo "Pushed ${CHANGES} branding fixes across ${FILES} files."
           else
             echo "Nothing to commit — all files already clean."
