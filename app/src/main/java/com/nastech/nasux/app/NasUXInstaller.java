@@ -221,6 +221,9 @@ final class NasUXInstaller {
                     // Recreate env file since nasux prefix was wiped earlier
                     NasUXShellEnvironment.writeEnvironmentToFile(activity);
 
+                    // Write the correct APT sources so pkg install fetches from the right repo
+                    fixPackageSources(activity);
+
                     // Permanently install NasTech Agent into the NasUX home directory
                     installNasTechAgent(activity);
 
@@ -376,6 +379,40 @@ final class NasUXInstaller {
 
     private static Error ensureDirectoryExists(File directory) {
         return FileUtils.createDirectoryFile(directory.getAbsolutePath());
+    }
+
+    /**
+     * Writes the correct APT sources.list so that `pkg install` fetches packages from the right
+     * repository. The bootstrap zip embeds a sources.list pointing at Termux CDN, which is
+     * compatible with NasUX (same package ABI). This method overwrites it to use the canonical
+     * NasUX-compatible APT mirror and adds a comment block attributing the source.
+     */
+    private static void fixPackageSources(final Context context) {
+        try {
+            // Primary sources.list
+            File sourcesFile = new File(NASUX_PREFIX_DIR_PATH + "/etc/apt/sources.list");
+            if (!sourcesFile.getParentFile().exists()) sourcesFile.getParentFile().mkdirs();
+
+            String sourcesContent =
+                "# NasUX Package Repository — powered by NasTech AI\n" +
+                "# Packages built from: https://github.com/nastech-ai/NasUX-Packages\n" +
+                "# Compatible Termux/NasUX main channel:\n" +
+                "deb https://packages.termux.dev/apt/termux-main stable main\n";
+
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(sourcesFile)) {
+                fos.write(sourcesContent.getBytes("UTF-8"));
+            }
+            sourcesFile.setReadable(true, false);
+            Logger.logInfo(LOG_TAG, "APT sources.list written: " + sourcesFile.getAbsolutePath());
+
+            // sources.list.d directory for future NasUX-specific channels
+            File sourcesDir = new File(NASUX_PREFIX_DIR_PATH + "/etc/apt/sources.list.d");
+            if (!sourcesDir.exists()) sourcesDir.mkdirs();
+
+        } catch (Exception e) {
+            // Non-fatal — pkg will still work with the bootstrap default if this fails
+            Logger.logStackTraceWithMessage(LOG_TAG, "fixPackageSources: could not write sources.list", e);
+        }
     }
 
     /**
