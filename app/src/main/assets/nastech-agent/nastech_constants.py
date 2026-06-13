@@ -330,16 +330,46 @@ def parse_reasoning_effort(effort: str) -> dict | None:
 
 
 _termux_cache: bool | None = None
+_nasux_cache: bool | None = None
 _termux_proot_cache: bool | None = None
 
 
-def is_termux() -> bool:
-    """Return True when running inside a **native** Termux (Android) environment.
+def is_nasux() -> bool:
+    """Return True when running inside a **NasUX** Android terminal environment.
 
-    Checks three signals in priority order for sub-millisecond detection:
-      1. ``TERMUX_VERSION`` env var — set by every Termux bootstrap since 0.49
-      2. ``PREFIX`` path contains ``com.termux/files/usr``
-      3. ``TERMUX_APP_PACKAGE_NAME`` env var — set when Termux:API is installed
+    NasUX is a rebranded fork of Termux powered by NasTech AI.  Detection
+    checks four signals in priority order:
+
+      1. ``NASUX_VERSION`` env var — set by the NasUX bootstrap
+      2. ``PREFIX`` path contains ``com.nastech.nasux/files/usr``
+      3. ``NASUX_APP_PACKAGE_NAME`` env var — set when NasUX:API is installed
+      4. ``NASUX_VERSION`` == ``TERMUX_VERSION`` shared bootstrap fallback
+
+    Result is module-level cached after the first call.
+    """
+    global _nasux_cache
+    if _nasux_cache is not None:
+        return _nasux_cache
+    prefix = os.getenv("PREFIX", "")
+    _nasux_cache = bool(
+        os.getenv("NASUX_VERSION")
+        or "com.nastech.nasux/files/usr" in prefix
+        or os.getenv("NASUX_APP_PACKAGE_NAME", "").startswith("com.nastech.nasux")
+    )
+    return _nasux_cache
+
+
+def is_termux() -> bool:
+    """Return True when running inside a **native** Termux or NasUX Android environment.
+
+    NasUX is a NasTech AI-powered fork of Termux — both use the same package
+    ABI and bootstrap format, so they are treated identically here.
+
+    Checks signals in priority order for sub-millisecond detection:
+      1. NasUX-specific: ``NASUX_VERSION`` / ``com.nastech.nasux/files/usr``
+      2. ``TERMUX_VERSION`` env var — set by every Termux/NasUX bootstrap ≥0.49
+      3. ``PREFIX`` path contains ``com.termux/files/usr``
+      4. ``TERMUX_APP_PACKAGE_NAME`` env var — set when Termux:API is installed
 
     Result is module-level cached after the first call so repeated checks
     (e.g. in the agent loop) cost a single dict lookup.  Import-safe — no
@@ -350,7 +380,8 @@ def is_termux() -> bool:
         return _termux_cache
     prefix = os.getenv("PREFIX", "")
     _termux_cache = bool(
-        os.getenv("TERMUX_VERSION")
+        is_nasux()
+        or os.getenv("TERMUX_VERSION")
         or "com.termux/files/usr" in prefix
         or os.getenv("TERMUX_APP_PACKAGE_NAME", "").startswith("com.termux")
     )
@@ -392,7 +423,7 @@ def is_termux_proot_distro() -> bool:
         _termux_proot_cache = True
         return True
 
-    if os.path.isdir("/data/data/com.termux"):
+    if os.path.isdir("/data/data/com.termux") or os.path.isdir("/data/data/com.nastech.nasux"):
         _termux_proot_cache = True
         return True
 
@@ -413,8 +444,9 @@ def get_environment_type() -> str:
     """Return a short canonical string describing the current runtime environment.
 
     Returns one of:
+      ``"nasux"``         — native NasUX (NasTech AI) on Android
       ``"termux"``        — native Termux on Android
-      ``"termux-proot"``  — Linux distro container inside Termux (proot-distro)
+      ``"termux-proot"``  — Linux distro container inside Termux/NasUX (proot-distro)
       ``"wsl"``           — Windows Subsystem for Linux
       ``"linux"``         — native Linux desktop/server
       ``"macos"``         — macOS
@@ -422,10 +454,12 @@ def get_environment_type() -> str:
       ``"unknown"``       — anything else
 
     Use this instead of scattered ``sys.platform`` checks when you need to
-    distinguish mobile-Termux from a real Linux server — especially for
+    distinguish mobile-Termux/NasUX from a real Linux server — especially for
     install dependency logic.
     """
     import sys as _sys
+    if is_nasux():
+        return "nasux"
     if is_termux():
         return "termux"
     if is_termux_proot_distro():
