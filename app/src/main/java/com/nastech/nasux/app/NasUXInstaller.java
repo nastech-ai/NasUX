@@ -383,8 +383,8 @@ final class NasUXInstaller {
 
     /**
      * Writes the correct APT sources.list so that `pkg install` fetches packages from the right
-     * repository. The bootstrap zip embeds a sources.list pointing at Termux CDN, which is
-     * compatible with NasUX (same package ABI). This method overwrites it to use the canonical
+     * repository. The bootstrap zip embeds a sources.list pointing at the Termux-compatible
+     * APT CDN (same package ABI as NasUX). This method overwrites it to use the canonical
      * NasUX-compatible APT mirror and adds a comment block attributing the source.
      */
     private static void fixPackageSources(final Context context) {
@@ -396,7 +396,7 @@ final class NasUXInstaller {
             String sourcesContent =
                 "# NasUX Package Repository — powered by NasTech AI\n" +
                 "# Packages built from: https://github.com/nastech-ai/NasUX-Packages\n" +
-                "# Compatible Termux/NasUX main channel:\n" +
+                "# NasUX-compatible main package channel:\n" +
                 "deb https://packages.termux.dev/apt/termux-main stable main\n";
 
             try (java.io.FileOutputStream fos = new java.io.FileOutputStream(sourcesFile)) {
