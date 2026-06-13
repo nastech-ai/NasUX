@@ -30,7 +30,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Java 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -87,11 +87,22 @@ jobs:
           echo "APK_BASENAME_PREFIX=$APK_BASENAME_PREFIX" >> $GITHUB_ENV
 
           # Rename output APKs to NasUX naming convention
+          # Gradle produces NasUX-App-<Label>-<tag>.apk; map label → abi suffix
+          declare -A ABI_LABEL=(
+            [universal]="Universal"
+            [arm64-v8a]="ARM64"
+            [armeabi-v7a]="ARM32"
+            [x86_64]="x86_64"
+            [x86]="x86"
+          )
           for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
-            SRC=$(ls "$APK_DIR"/*${abi}*.apk 2>/dev/null | head -1 || true)
+            LABEL="${ABI_LABEL[$abi]}"
+            SRC="$APK_DIR/NasUX-App-${LABEL}-${APK_VERSION_TAG}.apk"
             if [ -f "$SRC" ]; then
               cp "$SRC" "$APK_DIR/${APK_BASENAME_PREFIX}_${abi}.apk"
               echo "  ✓ $abi"
+            else
+              echo "  ⚠ $abi — not found at $SRC (skipping)"
             fi
           done
 
@@ -148,7 +159,7 @@ jobs:
             - NasTech AI Agent bundled and auto-installs on first boot
             - Glowing NasTech FAB for instant AI summoning
             - AMOLED pure-black theme with neon ANSI highlights
-            - `nastech-*` CLI commands (replace all termux-* commands)
+            - `nastech-*` CLI commands for AI and system control
             - User-customisable theme, 12 AMOLED presets + wallpaper
             - Auto-update via `nastech-update` command
 
