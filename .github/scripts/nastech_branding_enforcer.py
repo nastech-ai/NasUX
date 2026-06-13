@@ -33,7 +33,7 @@ REPORT_PATH    = Path("/tmp/branding_report.md")
 
 # Directories to skip entirely
 SKIP_DIRS = {
-    ".git", "packages", "scripts/build", "node_modules",
+    ".git", ".github/workflows", "packages", "scripts/build", "node_modules",
     "__pycache__", ".gradle", "build", ".idea", ".local",
     "gradle", "app/build", "nasux-shared/build",
     "terminal-emulator/build", "terminal-view/build",
