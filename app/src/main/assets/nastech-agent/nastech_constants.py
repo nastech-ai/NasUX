@@ -388,10 +388,6 @@ def is_android_terminal() -> bool:
     return _nasux_terminal_cache
 
 
-# Backward-compatibility alias
-is_termux = is_android_terminal
-
-
 def is_nasux_proot_distro() -> bool:
     """Return True when running inside a proot-distro Linux container on Android.
 
@@ -442,10 +438,6 @@ def is_nasux_proot_distro() -> bool:
 
     _nasux_proot_cache = False
     return False
-
-
-# Backward-compatibility alias
-is_termux_proot_distro = is_nasux_proot_distro
 
 
 def get_environment_type() -> str:
