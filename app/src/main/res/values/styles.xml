@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <style name="NasUXAlertDialogStyle" parent="@android:style/Theme.Material.Dialog.Alert">
-        <item name="android:colorAccent">@color/nastech_accent</item>
-        <item name="android:background">@color/surface_1</item>
+    <style name="NasUXAlertDialogStyle" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <item name="colorPrimary">@color/nastech_accent</item>
+        <item name="colorAccent">@color/nastech_accent</item>
+        <item name="android:background">@drawable/rounded_dialog_bg</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:textColor">@color/text_primary</item>
+        <item name="buttonBarNegativeButtonStyle">@style/NasUX.Dialog.Button</item>
+        <item name="buttonBarPositiveButtonStyle">@style/NasUX.Dialog.Button.Positive</item>
+    </style>
+
+    <style name="NasUX.Dialog.Button" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:fontFamily">@font/source_code_pro</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="NasUX.Dialog.Button.Positive">
+        <item name="android:textColor">@color/nastech_accent</item>
     </style>
 
     <!-- Drawer button styles -->

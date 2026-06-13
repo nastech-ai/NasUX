@@ -21,17 +21,16 @@ import androidx.core.content.ContextCompat;
 import com.nastech.nasux.R;
 import com.nastech.nasux.app.NasUXActivity;
 import com.nastech.nasux.shared.nasux.shell.command.runner.terminal.NasUXSession;
-import com.nastech.nasux.shared.theme.NightMode;
-import com.nastech.nasux.shared.theme.ThemeUtils;
 import com.nastech.nasux.terminal.TerminalSession;
 
 import java.util.List;
 
-public class NasUXSessionsListViewController extends ArrayAdapter<NasUXSession> implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class NasUXSessionsListViewController extends ArrayAdapter<NasUXSession>
+        implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
 
     final NasUXActivity mActivity;
 
-    final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
+    final StyleSpan boldSpan   = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
 
     public NasUXSessionsListViewController(NasUXActivity activity, List<NasUXSession> sessionList) {
@@ -43,67 +42,89 @@ public class NasUXSessionsListViewController extends ArrayAdapter<NasUXSession> 
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        View sessionRowView = convertView;
-        if (sessionRowView == null) {
-            LayoutInflater inflater = mActivity.getLayoutInflater();
-            sessionRowView = inflater.inflate(R.layout.item_terminal_sessions_list, parent, false);
+        View rowView = convertView;
+        if (rowView == null) {
+            rowView = mActivity.getLayoutInflater().inflate(
+                    R.layout.item_terminal_sessions_list, parent, false);
         }
 
-        TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
+        TextView sessionTitleView = rowView.findViewById(R.id.session_title);
+        View     cardContainer    = rowView.findViewById(R.id.session_card_container);
+        View     activeIndicator  = rowView.findViewById(R.id.session_active_indicator);
 
-        TerminalSession sessionAtRow = getItem(position).getTerminalSession();
+        NasUXSession item = getItem(position);
+        if (item == null) {
+            sessionTitleView.setText("null session");
+            return rowView;
+        }
+        TerminalSession sessionAtRow = item.getTerminalSession();
         if (sessionAtRow == null) {
             sessionTitleView.setText("null session");
-            return sessionRowView;
+            return rowView;
         }
 
-        boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        boolean isActive = sessionAtRow == currentSession;
 
-        if (shouldEnableDarkTheme) {
-            sessionTitleView.setBackground(
-                ContextCompat.getDrawable(mActivity, R.drawable.session_background_black_selected)
-            );
+        if (cardContainer != null) {
+            cardContainer.setBackground(ContextCompat.getDrawable(
+                    mActivity,
+                    isActive ? R.drawable.session_card_active : R.drawable.session_card_normal));
         }
 
-        String name = sessionAtRow.mSessionName;
-        String sessionTitle = sessionAtRow.getTitle();
+        if (activeIndicator != null) {
+            activeIndicator.setBackgroundColor(isActive
+                    ? ContextCompat.getColor(mActivity, R.color.nastech_accent)
+                    : Color.TRANSPARENT);
+        }
 
-        String numberPart = "[" + (position + 1) + "] ";
-        String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
-        String sessionTitlePart = (TextUtils.isEmpty(sessionTitle) ? "" : ((sessionNamePart.isEmpty() ? "" : "\n") + sessionTitle));
+        String name          = sessionAtRow.mSessionName;
+        String sessionTitle  = sessionAtRow.getTitle();
+        String numberPart    = "[" + (position + 1) + "] ";
+        String namePart      = TextUtils.isEmpty(name) ? "" : name;
+        String titlePart     = TextUtils.isEmpty(sessionTitle)
+                ? "" : ((namePart.isEmpty() ? "" : "\n") + sessionTitle);
+        String full          = numberPart + namePart + titlePart;
 
-        String fullSessionTitle = numberPart + sessionNamePart + sessionTitlePart;
-        SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        fullSessionTitleStyled.setSpan(boldSpan, 0, numberPart.length() + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        fullSessionTitleStyled.setSpan(italicSpan, numberPart.length() + sessionNamePart.length(), fullSessionTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        SpannableString styled = new SpannableString(full);
+        styled.setSpan(boldSpan, 0, numberPart.length() + namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(italicSpan, numberPart.length() + namePart.length(), full.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sessionTitleView.setText(styled);
 
-        sessionTitleView.setText(fullSessionTitleStyled);
-
-        boolean sessionRunning = sessionAtRow.isRunning();
-
-        if (sessionRunning) {
-            sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+        boolean running = sessionAtRow.isRunning();
+        if (running) {
+            sessionTitleView.setPaintFlags(
+                    sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
         } else {
-            sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+            sessionTitleView.setPaintFlags(
+                    sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
-        int defaultColor = shouldEnableDarkTheme ? Color.WHITE : Color.BLACK;
-        int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
-        sessionTitleView.setTextColor(color);
-        return sessionRowView;
+
+        int textColor = (running || sessionAtRow.getExitStatus() == 0)
+                ? ContextCompat.getColor(mActivity, R.color.session_text)
+                : ContextCompat.getColor(mActivity, R.color.text_error);
+        sessionTitleView.setTextColor(textColor);
+
+        return rowView;
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        NasUXSession clickedSession = getItem(position);
-        mActivity.getNasUXTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
+        NasUXSession clicked = getItem(position);
+        if (clicked != null) {
+            mActivity.getNasUXTerminalSessionClient()
+                    .setCurrentSession(clicked.getTerminalSession());
+        }
         mActivity.getDrawer().closeDrawers();
     }
 
     @Override
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        final NasUXSession selectedSession = getItem(position);
-        mActivity.getNasUXTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
+        NasUXSession selected = getItem(position);
+        if (selected != null) {
+            mActivity.getNasUXTerminalSessionClient()
+                    .renameSession(selected.getTerminalSession());
+        }
         return true;
     }
-
 }

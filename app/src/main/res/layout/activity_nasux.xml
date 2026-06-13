@@ -1,4 +1,6 @@
-<com.nastech.nasux.app.terminal.NasUXActivityRootView xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<com.nastech.nasux.app.terminal.NasUXActivityRootView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_nasux_root_view"
@@ -13,9 +15,6 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginHorizontal="0dp"
-        android:layout_marginVertical="0dp"
-        android:orientation="vertical"
         android:background="@color/terminal_bg">
 
         <androidx.drawerlayout.widget.DrawerLayout
@@ -25,7 +24,7 @@
             android:layout_above="@+id/terminal_toolbar_view_pager"
             android:layout_height="match_parent">
 
-            <!-- Terminal view — pure dark, Termius-style -->
+            <!-- ── Terminal view ── -->
             <com.nastech.nasux.view.TerminalView
                 android:id="@+id/terminal_view"
                 android:layout_width="match_parent"
@@ -37,65 +36,97 @@
                 android:background="@color/terminal_bg"
                 tools:ignore="UnusedAttribute" />
 
-            <!-- Left Drawer — Termius-style dark navy sidebar -->
+            <!-- ── Left Drawer — polished AMOLED sidebar ── -->
             <LinearLayout
                 android:id="@+id/left_drawer"
-                android:layout_width="260dp"
+                android:layout_width="272dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="start"
                 android:orientation="vertical"
-                android:background="@color/sidebar_bg">
+                android:background="@drawable/sidebar_shape"
+                android:clipToOutline="true"
+                android:elevation="16dp">
 
-                <!-- Header bar -->
+                <!-- ── Header ── -->
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="54dp"
+                    android:layout_height="64dp"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="6dp"
-                    android:background="@color/toolbar_bg">
+                    android:paddingStart="16dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="4dp"
+                    android:background="@color/sidebar_bg">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="NasUX"
-                        android:textColor="@color/nastech_accent"
-                        android:textSize="17sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.04"
-                        android:fontFamily="@font/source_code_pro" />
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="NasUX"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.04"
+                            android:fontFamily="@font/source_code_pro" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="powered by NasTech AI"
+                            android:textColor="@color/text_disabled"
+                            android:textSize="9sp"
+                            android:letterSpacing="0.06"
+                            android:fontFamily="@font/source_code_pro" />
+
+                    </LinearLayout>
 
                     <ImageButton
                         android:id="@+id/settings_button"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:src="@drawable/ic_settings"
-                        android:background="@drawable/nastech_button_bg"
+                        android:background="@drawable/sidebar_btn_bg"
                         android:contentDescription="@string/action_open_settings"
+                        android:padding="8dp"
                         app:tint="@color/text_secondary" />
+
                 </LinearLayout>
 
-                <!-- Divider -->
-                <View android:layout_width="match_parent" android:layout_height="1dp"
-                    android:background="@color/divider" />
+                <!-- Header bottom accent line -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_accent" />
 
-                <!-- SESSIONS section header -->
-                <TextView
+                <!-- ── SESSIONS section ── -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="SESSIONS"
-                    android:textColor="@color/text_disabled"
-                    android:textSize="9sp"
-                    android:letterSpacing="0.18"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="2dp"
-                    android:fontFamily="@font/source_code_pro" />
+                    android:paddingEnd="8dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="4dp">
 
-                <!-- Terminal sessions list — constrained to max ~35% of height -->
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="SESSIONS"
+                        android:textColor="@color/text_disabled"
+                        android:textSize="9sp"
+                        android:letterSpacing="0.2"
+                        android:fontFamily="@font/source_code_pro" />
+
+                </LinearLayout>
+
+                <!-- Session list — rounded cards, max ~40% of drawer height -->
                 <ListView
                     android:id="@+id/terminal_sessions_list"
                     android:layout_width="match_parent"
@@ -103,188 +134,432 @@
                     android:layout_weight="1"
                     android:choiceMode="singleChoice"
                     android:longClickable="true"
-                    android:divider="@color/divider"
-                    android:dividerHeight="0.5dp"
-                    android:background="@color/sidebar_bg" />
+                    android:divider="@android:color/transparent"
+                    android:dividerHeight="0dp"
+                    android:background="@color/sidebar_bg"
+                    android:scrollbarStyle="outsideOverlay"
+                    android:fadingEdge="vertical"
+                    android:fadingEdgeLength="12dp" />
 
-                <!-- Divider -->
-                <View android:layout_width="match_parent" android:layout_height="1dp"
-                    android:background="@color/divider" />
+                <!-- ── AI QUICK COMMANDS ── -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@color/border_accent" />
 
-                <!-- NASTECH AI section header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="QUICK COMMANDS"
+                    android:textColor="@color/text_disabled"
+                    android:textSize="9sp"
+                    android:letterSpacing="0.2"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="6dp"
+                    android:fontFamily="@font/source_code_pro" />
+
+                <!-- Horizontally scrollable AI suggestion chips -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="8dp"
+                    android:clipToPadding="false">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/nastech_chip_ls"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="ls -la"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_pwd"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="pwd"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_df"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="df -h"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_top"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="top"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_clear"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="clear"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_git"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="git status"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_python"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="python3"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:background="@drawable/ai_chip_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                        <TextView
+                            android:id="@+id/nastech_chip_ask"
+                            android:layout_width="wrap_content"
+                            android:layout_height="30dp"
+                            android:text="ask AI ✦"
+                            android:textColor="@color/amoled_bg"
+                            android:textSize="11sp"
+                            android:gravity="center"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:background="@drawable/ai_chip_primary_bg"
+                            android:fontFamily="@font/source_code_pro"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true" />
+
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <!-- ── NASTECH AI section ── -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_accent" />
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="NASTECH AI"
                     android:textColor="@color/nastech_accent"
                     android:textSize="9sp"
-                    android:letterSpacing="0.18"
+                    android:letterSpacing="0.2"
                     android:paddingStart="14dp"
                     android:paddingEnd="14dp"
                     android:paddingTop="10dp"
-                    android:paddingBottom="2dp"
+                    android:paddingBottom="4dp"
                     android:fontFamily="@font/source_code_pro" />
 
-                <!-- NasTech AI quick command buttons -->
+                <!-- AI Buttons scroll area -->
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="2"
+                    android:scrollbars="none"
+                    android:fadingEdge="vertical"
+                    android:fadingEdgeLength="10dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="6dp">
+
+                        <!-- START AI AGENT — primary, filled teal -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_start_ai"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:layout_marginBottom="4dp"
+                            android:text="@string/nastech_btn_start_ai"
+                            android:textColor="@color/amoled_bg"
+                            android:textSize="12.5sp"
+                            android:textStyle="bold"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:backgroundTint="@color/nastech_accent"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_chat"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginBottom="3dp"
+                            android:text="@string/nastech_btn_chat"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="@color/divider"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_update"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginBottom="3dp"
+                            android:text="@string/nastech_btn_update"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="@color/divider"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_install_deps"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginBottom="3dp"
+                            android:text="@string/nastech_btn_install_deps"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="@color/divider"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_setup"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginBottom="3dp"
+                            android:text="@string/nastech_btn_setup"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="@color/divider"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <!-- Separator -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="4dp"
+                            android:layout_marginBottom="4dp"
+                            android:background="@color/divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_theme"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginBottom="3dp"
+                            android:text="@string/nastech_btn_theme"
+                            android:textColor="@color/nastech_accent"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="@color/border_accent"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_shizuku"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:layout_marginBottom="3dp"
+                            android:text="@string/nastech_btn_shizuku"
+                            android:textColor="#FFA040"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="#33FFA040"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/nastech_btn_voice_mode"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="42dp"
+                            android:text="@string/nastech_btn_voice_mode"
+                            android:textColor="#FF6090"
+                            android:textSize="12.5sp"
+                            android:gravity="start|center_vertical"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="8dp"
+                            android:fontFamily="@font/source_code_pro"
+                            app:strokeColor="#33FF6090"
+                            app:strokeWidth="1dp"
+                            app:backgroundTint="@color/surface_1"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
+
+                    </LinearLayout>
+                </ScrollView>
+
+                <!-- ── Bottom bar — Keyboard + New Session ── -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_accent" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="4dp">
-
-                    <Button
-                        android:id="@+id/nastech_btn_start_ai"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="42dp"
-                        android:text="@string/nastech_btn_start_ai"
-                        android:textColor="@color/nastech_accent"
-                        android:textSize="12.5sp"
-                        android:textStyle="bold"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_chat"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_chat"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_update"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_update"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_install_deps"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_install_deps"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_setup"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_setup"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_theme"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_theme"
-                        android:textColor="@color/nastech_accent"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_shizuku"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_shizuku"
-                        android:textColor="#FFA040"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                    <Button
-                        android:id="@+id/nastech_btn_voice_mode"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="40dp"
-                        android:text="@string/nastech_btn_voice_mode"
-                        android:textColor="#FF6090"
-                        android:textSize="12.5sp"
-                        android:gravity="start|center_vertical"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="8dp"
-                        android:background="@drawable/nastech_button_bg"
-                        android:fontFamily="@font/source_code_pro" />
-
-                </LinearLayout>
-
-                <!-- Divider -->
-                <View android:layout_width="match_parent" android:layout_height="1dp"
-                    android:background="@color/divider" />
-
-                <!-- Bottom bar — Keyboard + New Session -->
-                <LinearLayout
-                    style="?android:attr/buttonBarStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="52dp"
                     android:orientation="horizontal"
-                    android:background="@color/toolbar_bg">
+                    android:background="@color/sidebar_bg"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:gravity="center_vertical">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/toggle_keyboard_button"
-                        style="?android:attr/buttonBarButtonStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
                         android:layout_weight="1"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="6dp"
                         android:text="@string/action_toggle_soft_keyboard"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:textSize="11.5sp"
+                        android:fontFamily="@font/source_code_pro"
+                        app:strokeColor="@color/divider"
+                        app:strokeWidth="1dp"
+                        app:backgroundTint="@color/surface_1"
+                        app:cornerRadius="10dp"
+                        app:elevation="0dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/new_session_button"
-                        style="?android:attr/buttonBarButtonStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="0dp"
                         android:layout_weight="1"
+                        android:layout_height="40dp"
                         android:text="@string/action_new_session"
-                        android:textColor="@color/nastech_accent"
-                        android:textSize="12sp" />
+                        android:textColor="@color/amoled_bg"
+                        android:textSize="11.5sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/source_code_pro"
+                        app:backgroundTint="@color/nastech_accent"
+                        app:cornerRadius="10dp"
+                        app:elevation="0dp" />
+
                 </LinearLayout>
 
             </LinearLayout>
 
         </androidx.drawerlayout.widget.DrawerLayout>
 
-        <!-- Terminal toolbar (Termius-style extra keys row) -->
+        <!-- Terminal toolbar extra keys -->
         <androidx.viewpager.widget.ViewPager
             android:id="@+id/terminal_toolbar_view_pager"
             android:visibility="gone"
@@ -293,7 +568,7 @@
             android:background="@color/toolbar_bg"
             android:layout_alignParentBottom="true" />
 
-        <!-- Voice mic mini-FAB — glows red while listening, sits above main FAB -->
+        <!-- Voice mic mini-FAB -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/nastech_mic_fab"
             android:layout_width="wrap_content"
@@ -310,7 +585,7 @@
             app:elevation="8dp"
             app:maxImageSize="20dp" />
 
-        <!-- NasTech AI Floating Action Button — teal glow, hovers over terminal -->
+        <!-- NasTech AI Floating Action Button -->
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/nastech_fab"
             android:layout_width="wrap_content"

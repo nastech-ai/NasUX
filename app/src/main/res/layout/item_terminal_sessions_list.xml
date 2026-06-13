@@ -1,30 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="48dp"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:background="@drawable/session_background_selected"
-    android:paddingStart="14dp"
-    android:paddingEnd="8dp">
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="3dp"
+    android:paddingBottom="3dp"
+    android:background="@android:color/transparent">
 
-    <!-- Active session indicator dot -->
-    <View
-        android:id="@+id/session_active_indicator"
-        android:layout_width="4dp"
-        android:layout_height="4dp"
-        android:layout_marginEnd="10dp"
-        android:background="@color/nastech_accent"
-        android:visibility="gone" />
+    <LinearLayout
+        android:id="@+id/session_card_container"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/session_card_normal"
+        android:clipToOutline="true">
 
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/session_title"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:ellipsize="end"
-        android:singleLine="true"
-        android:gravity="start|center_vertical"
-        android:textSize="13sp"
-        android:textColor="@color/session_text"
-        android:fontFamily="@font/source_code_pro" />
+        <!-- Left active-session bar — background colour set by adapter -->
+        <View
+            android:id="@+id/session_active_indicator"
+            android:layout_width="3dp"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/session_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:gravity="start|center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="10dp"
+            android:textSize="13sp"
+            android:textColor="@color/session_text"
+            android:fontFamily="@font/source_code_pro" />
+
+    </LinearLayout>
+
 </LinearLayout>

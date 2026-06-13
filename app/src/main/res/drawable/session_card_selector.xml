@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/ripple_accent">
+    <item>
+        <selector>
+            <item android:state_activated="true" android:drawable="@drawable/session_card_active" />
+            <item android:drawable="@drawable/session_card_normal" />
+        </selector>
+    </item>
+    <item android:id="@android:id/mask">
+        <shape>
+            <solid android:color="@color/white" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+</ripple>

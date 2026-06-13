@@ -741,9 +741,44 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
             voiceBtn.setOnClickListener(v -> {
                 getDrawer().closeDrawers();
                 mVoiceManager.toggleMode();
-                // Start listening immediately after toggling mode
                 mVoiceManager.startListening(this, this::onVoiceResult);
             });
+        }
+
+        // ── AI suggestion chips — type command into current terminal, close drawer ──
+        final int[] chipIds = {
+            R.id.nastech_chip_ls,
+            R.id.nastech_chip_pwd,
+            R.id.nastech_chip_df,
+            R.id.nastech_chip_top,
+            R.id.nastech_chip_clear,
+            R.id.nastech_chip_git,
+            R.id.nastech_chip_python,
+            R.id.nastech_chip_ask
+        };
+        final String[] chipCommands = {
+            "ls -la\n",
+            "pwd\n",
+            "df -h\n",
+            "top\n",
+            "clear\n",
+            "git status\n",
+            "python3\n",
+            "nastech\n"
+        };
+        for (int i = 0; i < chipIds.length; i++) {
+            final String cmd = chipCommands[i];
+            View chip = findViewById(chipIds[i]);
+            if (chip != null) {
+                chip.setOnClickListener(v -> {
+                    getDrawer().closeDrawers();
+                    TerminalSession s = getCurrentSession();
+                    if (s != null) {
+                        byte[] b = cmd.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        s.write(b, 0, b.length);
+                    }
+                });
+            }
         }
     }
 

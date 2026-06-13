@@ -53,8 +53,14 @@
 
     <!-- ── Markdown / report view ── -->
     <color name="background_markdown_code_block">#FF111111</color>
+    <color name="background_markdown_code_inline">#FF1A1A2E</color>
     <color name="blue_link_dark">#FF4FC3F7</color>
     <color name="blue_link_light">#FF0277BD</color>
+
+    <!-- ── Session / card surfaces ── -->
+    <color name="surface_card">#FF141414</color>
+    <color name="surface_card_active">#FF1C2B2A</color>
+    <color name="chip_accent_fill">#0D00C8B8</color>
 
     <!-- ── Material design defaults (used by nasux-shared) ── -->
     <color name="design_default_color_surface">#FF111111</color>
