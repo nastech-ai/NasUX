@@ -3,7 +3,7 @@
 # NasTech CLI Wrapper Installer
 # Powered by NasTech AI — https://github.com/nastech-ai/NasUX
 #
-# Creates nastech-* equivalents for all termux-* system commands so that
+# Creates nastech-* equivalents for all Android system commands so that
 # NasUX users always interact with NasTech-branded commands.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -59,9 +59,7 @@ echo "Installing NasTech CLI wrappers in $BIN..."
 installed=0
 for cmd in "${CMDS[@]}"; do
     wrapper="$BIN/nastech-$cmd"
-    # Prefer nasux- binary; fall back to the underlying system command
     source_bin="$BIN/nasux-$cmd"
-    [ -f "$source_bin" ] || source_bin="$BIN/termux-$cmd"
 
     # Only create wrapper if the underlying command exists
     if [ -f "$source_bin" ]; then
