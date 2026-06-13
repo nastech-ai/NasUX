@@ -10,7 +10,7 @@
 PREFIX="${PREFIX:-/data/data/com.nastech.nasux/files/usr}"
 BIN="$PREFIX/bin"
 
-# All termux-* commands that get a nastech-* alias
+# All system commands that get a nastech-* alias
 CMDS=(
     setup-storage
     reload-settings
@@ -59,14 +59,16 @@ echo "Installing NasTech CLI wrappers in $BIN..."
 installed=0
 for cmd in "${CMDS[@]}"; do
     wrapper="$BIN/nastech-$cmd"
-    source_bin="$BIN/termux-$cmd"
+    # Prefer nasux- binary; fall back to the underlying system command
+    source_bin="$BIN/nasux-$cmd"
+    [ -f "$source_bin" ] || source_bin="$BIN/termux-$cmd"
 
-    # Only create wrapper if the underlying termux command exists
+    # Only create wrapper if the underlying command exists
     if [ -f "$source_bin" ]; then
         cat > "$wrapper" << WRAPPER
 #!/data/data/com.nastech.nasux/files/usr/bin/bash
 # NasTech AI CLI — powered by NasTech AI (NasUX)
-# Wrapper for: termux-$cmd
+# Wrapper for: nasux-$cmd
 exec "$source_bin" "\$@"
 WRAPPER
         chmod +x "$wrapper"
@@ -88,8 +90,8 @@ cat > "$BIN/nastech-setup-storage" << 'STORAGE'
 #!/data/data/com.nastech.nasux/files/usr/bin/bash
 # NasTech Storage Access — powered by NasTech AI
 echo "NasTech: Requesting storage access for NasUX..."
-if command -v termux-setup-storage >/dev/null 2>&1; then
-    exec termux-setup-storage "$@"
+if command -v nasux-setup-storage >/dev/null 2>&1; then
+    exec nasux-setup-storage "$@"
 else
     am broadcast --user 0 -a com.nastech.nasux.action.SETUP_STORAGE \
         -n com.nastech.nasux/.app.NasUXOpenReceiver 2>/dev/null \
