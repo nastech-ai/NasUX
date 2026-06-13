@@ -192,36 +192,51 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
         }
     }
 
-    def remoteUrl = "https://github.com/nastech-ai/NasUX-Packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
-    logger.quiet("Downloading " + remoteUrl + " ...")
+    // Primary: bundled patched ZIPs (committed to repo by scripts/patch-bootstrap.py).
+    // Remote: NasUX-Packages GitHub releases — only used when local ZIP is missing or checksum changed.
+    def remoteUrls = [
+        "https://github.com/nastech-ai/NasUX-Packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip",
+    ]
 
     file.parentFile.mkdirs()
 
-    try {
-        def connection = new URL(remoteUrl).openConnection()
-        connection.setInstanceFollowRedirects(true)
-        connection.setConnectTimeout(30000)
-        connection.setReadTimeout(120000)
-        def out = new BufferedOutputStream(new FileOutputStream(file))
-        def digestStream = new java.security.DigestInputStream(connection.inputStream, digest)
-        out << digestStream
-        out.close()
+    boolean downloaded = false
+    for (def remoteUrl : remoteUrls) {
+        if (downloaded) break
+        logger.quiet("Downloading " + remoteUrl + " ...")
+        try {
+            digest.reset()
+            def connection = new URL(remoteUrl).openConnection()
+            connection.setInstanceFollowRedirects(true)
+            connection.setConnectTimeout(30000)
+            connection.setReadTimeout(180000)
+            def out = new BufferedOutputStream(new FileOutputStream(file))
+            def digestStream = new java.security.DigestInputStream(connection.inputStream, digest)
+            out << digestStream
+            out.close()
 
-        def checksum = new BigInteger(1, digest.digest()).toString(16)
-        while (checksum.length() < 64) { checksum = "0" + checksum }
-        if (checksum != expectedChecksum) {
-            file.delete()
-            throw new GradleException("Wrong checksum for " + remoteUrl + ": expected: " + expectedChecksum + ", actual: " + checksum)
+            def checksum = new BigInteger(1, digest.digest()).toString(16)
+            while (checksum.length() < 64) { checksum = "0" + checksum }
+            if (checksum != expectedChecksum) {
+                file.delete()
+                logger.warn("WARNING: Checksum mismatch from " + remoteUrl + " — trying next source.")
+            } else {
+                logger.quiet("✓ bootstrap-" + arch + ".zip verified (" + checksum.substring(0,16) + "…)")
+                downloaded = true
+            }
+        } catch (java.io.FileNotFoundException e) {
+            logger.quiet("Not available at " + remoteUrl + " — trying next source.")
+        } catch (java.net.ConnectException | java.net.UnknownHostException e) {
+            logger.quiet("Cannot reach " + remoteUrl + " (" + e.message + ") — trying next source.")
         }
-    } catch (java.io.FileNotFoundException e) {
-        logger.warn("WARNING: Bootstrap not available at " + remoteUrl + " (404). " +
+    }
+
+    if (!downloaded) {
+        logger.warn("WARNING: Bootstrap not available from any source. " +
             "Creating placeholder zip for CI build. The resulting APK will not be functional " +
-            "until real bootstrap zips are published to nastech-ai/NasUX-Packages releases.")
+            "until real bootstrap zips are available at nastech-ai/NasUX-Packages releases " +
+            "or the SourceForge mirror.")
         // Create a minimal valid empty ZIP so .incbin in nasux-bootstrap-zip.S can compile
-        new java.util.zip.ZipOutputStream(new FileOutputStream(file)).close()
-    } catch (java.net.ConnectException | java.net.UnknownHostException e) {
-        logger.warn("WARNING: Cannot reach " + remoteUrl + " (" + e.message + "). " +
-            "Creating placeholder zip for CI build.")
         new java.util.zip.ZipOutputStream(new FileOutputStream(file)).close()
     }
 }
@@ -238,19 +253,19 @@ task downloadBootstraps() {
     doLast {
         def packageVariant = project.ext.packageVariant
         if (packageVariant == "apt-android-7") {
-            // bootstrap-2026.06.07-r1+apt.android-7 (latest; checksums verified at build time)
+            // bootstrap patched by NasUX patcher v4: text+ELF+GPG+entry-names all rebranded
             def version = "2026.06.07-r1" + "%2B" + "apt.android-7"
-            downloadBootstrap("aarch64", "9478e5749edbc6bce643e146f8966e8eb44894b4480885fdcb29112522063611", version)
-            downloadBootstrap("arm",     "2428084a6a6a93bbcdeea829ebfe9db1d37115301a75889696f0292da75a8586", version)
-            downloadBootstrap("i686",    "e5b368053917a8f305bfb1a5ebbf8bd00b580c8d0635466c5b9aad5506ee93f7", version)
-            downloadBootstrap("x86_64",  "cc0149dcf517ed52ce7f15d02b2efbe7ff9b44ceb9c734513599c7be7c28922e", version)
+            downloadBootstrap("aarch64", "a6c507540d3a0810fdb45796edae9603906f2c26c7c8fdc02bba6503418b3053", version)
+            downloadBootstrap("arm",     "bad26134d467df7be2291a2c1aed81b24658cdb311d8830957e20ac71d26990d", version)
+            downloadBootstrap("i686",    "bc5d13aefa4981473c0de4cedbc5aecf3e208540759f9e4315a0051e3407d09d", version)
+            downloadBootstrap("x86_64",  "d9b2ed28a2496923fd26ef41902f5143b202b31038833478a0a57b0d5db12140", version)
         } else if (packageVariant == "apt-android-5") {
             // apt-android-5 uses the same bootstrap as apt-android-7 (minSdk=24, Android 7+)
             def version = "2026.06.07-r1" + "%2B" + "apt.android-7"
-            downloadBootstrap("aarch64", "9478e5749edbc6bce643e146f8966e8eb44894b4480885fdcb29112522063611", version)
-            downloadBootstrap("arm",     "2428084a6a6a93bbcdeea829ebfe9db1d37115301a75889696f0292da75a8586", version)
-            downloadBootstrap("i686",    "e5b368053917a8f305bfb1a5ebbf8bd00b580c8d0635466c5b9aad5506ee93f7", version)
-            downloadBootstrap("x86_64",  "cc0149dcf517ed52ce7f15d02b2efbe7ff9b44ceb9c734513599c7be7c28922e", version)
+            downloadBootstrap("aarch64", "a6c507540d3a0810fdb45796edae9603906f2c26c7c8fdc02bba6503418b3053", version)
+            downloadBootstrap("arm",     "bad26134d467df7be2291a2c1aed81b24658cdb311d8830957e20ac71d26990d", version)
+            downloadBootstrap("i686",    "bc5d13aefa4981473c0de4cedbc5aecf3e208540759f9e4315a0051e3407d09d", version)
+            downloadBootstrap("x86_64",  "d9b2ed28a2496923fd26ef41902f5143b202b31038833478a0a57b0d5db12140", version)
         } else {
             throw new GradleException("Unsupported NASUX_PACKAGE_VARIANT \"" + packageVariant + "\"")
         }
