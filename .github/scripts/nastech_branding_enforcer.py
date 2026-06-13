@@ -39,10 +39,12 @@ SKIP_DIRS = {
     "terminal-emulator/build", "terminal-view/build",
 }
 
-# Files to never modify (bot should not self-modify)
+# Files to never modify (bot should not self-modify or corrupt its own patterns)
 SKIP_FILES = {
-    "nastech_branding_enforcer.py",
-    "nastech_branding_bot.py",
+    "nastech_branding_enforcer.py",   # this script
+    "nastech_branding_enforcer.yml",  # this workflow
+    "nastech_branding_bot.py",        # old bot script (regex patterns inside)
+    "nastech_branding_bot.yml",       # old bot workflow (patterns inside)
 }
 
 # File extensions eligible for scanning
