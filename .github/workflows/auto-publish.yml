@@ -68,17 +68,23 @@ jobs:
           RELEASE_VERSION_NAME="v${CURRENT_VERSION_NAME}+${SHORT_SHA}"
 
           APK_DIR_PATH="./app/build/outputs/apk/debug"
-          APK_VERSION_TAG="${RELEASE_VERSION_NAME}-${{ matrix.package_variant }}-github-release"
-          APK_BASENAME_PREFIX="nasux-app_${APK_VERSION_TAG}"
 
-          echo "APK_DIR_PATH=${APK_DIR_PATH}"             >> $GITHUB_ENV
-          echo "APK_VERSION_TAG=${APK_VERSION_TAG}"       >> $GITHUB_ENV
-          echo "APK_BASENAME_PREFIX=${APK_BASENAME_PREFIX}" >> $GITHUB_ENV
+          # Human-readable APK version tag
+          # Primary variant (apt-android-7): NasUX-App-ARM64-v0.119.0+abc1234.apk
+          # Legacy variant  (apt-android-5): NasUX-App-ARM64-v0.119.0+abc1234-Legacy.apk
+          if [ "${{ matrix.package_variant }}" = "apt-android-5" ]; then
+            APK_VERSION_TAG="${RELEASE_VERSION_NAME}-Legacy"
+          else
+            APK_VERSION_TAG="${RELEASE_VERSION_NAME}"
+          fi
+
+          echo "APK_DIR_PATH=${APK_DIR_PATH}"               >> $GITHUB_ENV
+          echo "APK_VERSION_TAG=${APK_VERSION_TAG}"         >> $GITHUB_ENV
           echo "RELEASE_VERSION_NAME=${RELEASE_VERSION_NAME}" >> $GITHUB_ENV
-          echo "SHORT_SHA=${SHORT_SHA}"                   >> $GITHUB_ENV
+          echo "SHORT_SHA=${SHORT_SHA}"                     >> $GITHUB_ENV
           echo "CURRENT_VERSION_NAME=${CURRENT_VERSION_NAME}" >> $GITHUB_ENV
 
-          echo "Building NasUX ${RELEASE_VERSION_NAME} (variant: ${{ matrix.package_variant }})"
+          echo "Building NasUX ${APK_VERSION_TAG} (variant: ${{ matrix.package_variant }})"
 
           export NASUX_APP_VERSION_NAME="${CURRENT_VERSION_NAME}"
           export NASUX_APK_VERSION_TAG="${APK_VERSION_TAG}"
@@ -89,35 +95,35 @@ jobs:
           fi
 
           echo "Validating APKs..."
-          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
-            if ! test -f "${APK_DIR_PATH}/${APK_BASENAME_PREFIX}_${abi}.apk"; then
-              echo "Files found:"
-              ls "${APK_DIR_PATH}/" || true
-              exit_on_error "Missing APK: ${APK_BASENAME_PREFIX}_${abi}.apk"
+          for abi_label in Universal ARM64 ARM32 x86_64 x86; do
+            APK_FILE="${APK_DIR_PATH}/NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
+            if ! test -f "${APK_FILE}"; then
+              echo "Files found:"; ls "${APK_DIR_PATH}/" || true
+              exit_on_error "Missing APK: NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
             fi
-            echo "  ✓ ${abi}"
+            echo "  ✓ NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
           done
 
           echo "Generating sha256sums..."
           (cd "${APK_DIR_PATH}"; sha256sum \
-            "${APK_BASENAME_PREFIX}_universal.apk" \
-            "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
-            "${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
-            "${APK_BASENAME_PREFIX}_x86_64.apk" \
-            "${APK_BASENAME_PREFIX}_x86.apk" \
-            > "${APK_BASENAME_PREFIX}_sha256sums.txt") \
+            "NasUX-App-Universal-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-ARM64-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-ARM32-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-x86_64-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-x86-${APK_VERSION_TAG}.apk" \
+            > "NasUX-App-SHA256-${APK_VERSION_TAG}.txt") \
             || exit_on_error "sha256sum failed"
 
-          cat "${APK_DIR_PATH}/${APK_BASENAME_PREFIX}_sha256sums.txt"
+          cat "${APK_DIR_PATH}/NasUX-App-SHA256-${APK_VERSION_TAG}.txt"
           echo "✅ Build and validation complete."
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nasux-apks-${{ matrix.package_variant }}
+          name: NasUX-APKs-${{ matrix.package_variant }}-${{ env.APK_VERSION_TAG }}
           path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_*.apk
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_sha256sums.txt
+            ${{ env.APK_DIR_PATH }}/NasUX-App-*-${{ env.APK_VERSION_TAG }}.apk
+            ${{ env.APK_DIR_PATH }}/NasUX-App-SHA256-${{ env.APK_VERSION_TAG }}.txt
           retention-days: 90
 
   # ── Generate release notes from recent commits ────────────────────────────────
@@ -210,19 +216,19 @@ jobs:
 
           | APK File | Target Device |
           |---|---|
-          | `*_arm64-v8a.apk` | **Recommended** — most modern phones (Pixel, Samsung, OnePlus, Xiaomi) |
-          | `*_armeabi-v7a.apk` | Older 32-bit Android phones |
-          | `*_universal.apk` | Any Android device (larger file) |
-          | `*_x86_64.apk` | Android emulators / x86 tablets |
-          | `*_x86.apk` | 32-bit Android emulators |
+          | `NasUX-App-ARM64-*.apk` | ⭐ **Recommended** — most modern phones (Pixel, Samsung, OnePlus, Xiaomi, etc.) |
+          | `NasUX-App-ARM32-*.apk` | Older 32-bit Android phones |
+          | `NasUX-App-Universal-*.apk` | Any Android device (works everywhere, larger file) |
+          | `NasUX-App-x86_64-*.apk` | Android emulators / Intel x86 tablets |
+          | `NasUX-App-x86-*.apk` | 32-bit Android emulators |
 
-          Two bootstrap variants are published (`apt-android-7` and `apt-android-5`).
-          Most users should pick the `apt-android-7` variant.
+          Files ending in `-Legacy` use the `apt-android-5` bootstrap (same device support, different package repo).
+          Most users should pick the standard (non-Legacy) APK.
 
-          > **First run:** NasTech AI Agent installs automatically.
-          > Tap the **teal glowing FAB** or open the sidebar to start the AI.
+          > **First run:** NasTech AI Agent installs automatically into `~/nastech-agent/`.
+          > Tap the **teal glowing FAB** or run `nastech chat` to start the AI.
 
-          > Verify file integrity with the attached `*_sha256sums.txt`.
+          > Verify file integrity with the attached `NasUX-App-SHA256-*.txt`.
           INST_END
 
           echo "✅ Release notes generated."
@@ -265,7 +271,7 @@ jobs:
           body:      ${{ needs.generate-notes.outputs.notes }}
           files: |
             ./release-apks/**/*.apk
-            ./release-apks/**/*sha256sums.txt
+            ./release-apks/**/NasUX-App-SHA256-*.txt
           draft:      false
           prerelease: false
         env:

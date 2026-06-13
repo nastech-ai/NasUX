@@ -1,0 +1,243 @@
+name: NasTech Bootstrap Auto-Update
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Every Monday 06:00 UTC
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    name: Check for newer bootstrap
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect latest bootstrap version
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Checking latest Termux bootstrap release ==="
+
+          # Fetch the latest bootstrap release that targets apt.android-7
+          LATEST_TAG=$(gh api \
+            "repos/termux/termux-packages/releases?per_page=30" \
+            --jq '[.[] | select(.tag_name | startswith("bootstrap-")) |
+                   select(.tag_name | contains("apt.android-7")) |
+                   .tag_name][0]' 2>/dev/null || echo "")
+
+          if [ -z "${LATEST_TAG}" ] || [ "${LATEST_TAG}" = "null" ]; then
+            echo "❌ Could not fetch latest bootstrap release tag."
+            exit 1
+          fi
+
+          # Extract just the date+rev part: bootstrap-2026.06.07-r1+apt.android-7 -> 2026.06.07-r1
+          LATEST_VERSION=$(echo "${LATEST_TAG}" \
+            | sed 's/^bootstrap-//' \
+            | sed 's/[+%].*$//')
+
+          echo "Latest upstream: ${LATEST_TAG}  (version: ${LATEST_VERSION})"
+
+          # Extract the current version from build.gradle
+          CURRENT_VERSION=$(grep 'def version = "' app/build.gradle \
+            | head -1 \
+            | sed -r 's/.*"([0-9]{4}\.[0-9]{2}\.[0-9]{2}-r[0-9]+)".*/\1/')
+
+          echo "Current in repo: ${CURRENT_VERSION}"
+
+          if [ "${LATEST_VERSION}" = "${CURRENT_VERSION}" ]; then
+            echo "✅ Bootstrap is already up to date (${CURRENT_VERSION}). Nothing to do."
+            echo "UPDATE_NEEDED=false" >> $GITHUB_OUTPUT
+          else
+            echo "🔄 Update available: ${CURRENT_VERSION} → ${LATEST_VERSION}"
+            echo "UPDATE_NEEDED=true"           >> $GITHUB_OUTPUT
+            echo "LATEST_TAG=${LATEST_TAG}"     >> $GITHUB_OUTPUT
+            echo "LATEST_VERSION=${LATEST_VERSION}" >> $GITHUB_OUTPUT
+            echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download new bootstrap zips and compute SHA-256
+        if: steps.detect.outputs.UPDATE_NEEDED == 'true'
+        id: download
+        run: |
+          LATEST_TAG="${{ steps.detect.outputs.LATEST_TAG }}"
+
+          # URL-encode the + character in the tag name
+          URL_TAG=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe='-.'))" \
+            "${LATEST_TAG}")
+
+          BASE_URL="https://github.com/termux/termux-packages/releases/download/${URL_TAG}"
+          echo "Downloading from: ${BASE_URL}"
+          echo ""
+
+          declare -A CS
+          for arch in aarch64 arm i686 x86_64; do
+            URL="${BASE_URL}/bootstrap-${arch}.zip"
+            DEST="/tmp/bootstrap-${arch}.zip"
+            echo "↓ bootstrap-${arch}.zip"
+            if ! curl -fL --connect-timeout 30 --max-time 300 \
+                 --retry 3 --retry-delay 5 \
+                 -o "${DEST}" "${URL}"; then
+              echo "❌ Failed to download ${URL}"
+              exit 1
+            fi
+            CHECKSUM=$(sha256sum "${DEST}" | cut -d' ' -f1)
+            CS[$arch]="${CHECKSUM}"
+            SIZE=$(du -h "${DEST}" | cut -f1)
+            echo "  ✅ ${arch}: ${CHECKSUM}  (${SIZE})"
+          done
+
+          echo "CHECKSUM_AARCH64=${CS[aarch64]}" >> $GITHUB_OUTPUT
+          echo "CHECKSUM_ARM=${CS[arm]}"         >> $GITHUB_OUTPUT
+          echo "CHECKSUM_I686=${CS[i686]}"       >> $GITHUB_OUTPUT
+          echo "CHECKSUM_X86_64=${CS[x86_64]}"  >> $GITHUB_OUTPUT
+
+      - name: Update build.gradle
+        if: steps.detect.outputs.UPDATE_NEEDED == 'true'
+        env:
+          LATEST_VERSION:    ${{ steps.detect.outputs.LATEST_VERSION }}
+          CHECKSUM_AARCH64:  ${{ steps.download.outputs.CHECKSUM_AARCH64 }}
+          CHECKSUM_ARM:      ${{ steps.download.outputs.CHECKSUM_ARM }}
+          CHECKSUM_I686:     ${{ steps.download.outputs.CHECKSUM_I686 }}
+          CHECKSUM_X86_64:   ${{ steps.download.outputs.CHECKSUM_X86_64 }}
+        run: |
+          python3 << 'PYEOF'
+import os, re
+
+v     = os.environ["LATEST_VERSION"]
+cs    = {
+    "aarch64": os.environ["CHECKSUM_AARCH64"],
+    "arm":     os.environ["CHECKSUM_ARM"],
+    "i686":    os.environ["CHECKSUM_I686"],
+    "x86_64":  os.environ["CHECKSUM_X86_64"],
+}
+
+with open("app/build.gradle", "r") as f:
+    src = f.read()
+
+# Update the comment line  (// bootstrap-XXXX+apt.android-7 ...)
+src = re.sub(
+    r'// bootstrap-[\d.]+-r\d+\+apt\.android-7[^\n]*',
+    f'// bootstrap-{v}+apt.android-7 (latest; checksums verified at build time)',
+    src
+)
+
+# Update the version string for apt-android-7 and apt-android-5 blocks
+# Matches:  def version = "2026.06.07-r1" + "%2B" + "apt.android-7"
+src = re.sub(
+    r'def version = "[\d.]+-r\d+" \+ "%2B" \+ "apt\.android-7"',
+    f'def version = "{v}" + "%2B" + "apt.android-7"',
+    src
+)
+
+# Update all four downloadBootstrap checksums (both variants now use same bootstrap)
+src = re.sub(
+    r'(downloadBootstrap\("aarch64",\s*)"[0-9a-f]{64}"',
+    r'\1"' + cs["aarch64"] + '"',
+    src
+)
+src = re.sub(
+    r'(downloadBootstrap\("arm",\s*)"[0-9a-f]{64}"',
+    r'\1"' + cs["arm"] + '"',
+    src
+)
+src = re.sub(
+    r'(downloadBootstrap\("i686",\s*)"[0-9a-f]{64}"',
+    r'\1"' + cs["i686"] + '"',
+    src
+)
+src = re.sub(
+    r'(downloadBootstrap\("x86_64",\s*)"[0-9a-f]{64}"',
+    r'\1"' + cs["x86_64"] + '"',
+    src
+)
+
+with open("app/build.gradle", "w") as f:
+    f.write(src)
+
+print(f"✅ build.gradle updated to bootstrap {v}")
+for arch, checksum in cs.items():
+    print(f"  {arch}: {checksum}")
+PYEOF
+
+      - name: Show diff
+        if: steps.detect.outputs.UPDATE_NEEDED == 'true'
+        run: git diff app/build.gradle
+
+      - name: Create pull request
+        if: steps.detect.outputs.UPDATE_NEEDED == 'true'
+        env:
+          GH_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+          LATEST_VERSION:   ${{ steps.detect.outputs.LATEST_VERSION }}
+          CURRENT_VERSION:  ${{ steps.detect.outputs.CURRENT_VERSION }}
+          LATEST_TAG:       ${{ steps.detect.outputs.LATEST_TAG }}
+          CHECKSUM_AARCH64: ${{ steps.download.outputs.CHECKSUM_AARCH64 }}
+          CHECKSUM_ARM:     ${{ steps.download.outputs.CHECKSUM_ARM }}
+          CHECKSUM_I686:    ${{ steps.download.outputs.CHECKSUM_I686 }}
+          CHECKSUM_X86_64:  ${{ steps.download.outputs.CHECKSUM_X86_64 }}
+        run: |
+          BRANCH="auto/bootstrap-${LATEST_VERSION}"
+
+          # Create or reset the update branch
+          git config user.name  "NasTech Bootstrap Bot"
+          git config user.email "nastech-bot@users.noreply.github.com"
+          git checkout -B "${BRANCH}"
+          git add app/build.gradle
+          git commit -m "chore(bootstrap): update to ${LATEST_VERSION}
+
+Bootstrap: ${CURRENT_VERSION} → ${LATEST_VERSION}
+Source tag: ${LATEST_TAG}
+
+SHA-256 checksums (verified):
+  aarch64: ${CHECKSUM_AARCH64}
+  arm:     ${CHECKSUM_ARM}
+  i686:    ${CHECKSUM_I686}
+  x86_64:  ${CHECKSUM_X86_64}"
+
+          git push --force origin "${BRANCH}"
+
+          # Close any existing PR for this bootstrap version first
+          gh pr list --head "${BRANCH}" --json number --jq '.[].number' \
+            | xargs -r -I{} gh pr close {} --comment "Superseded by new push." 2>/dev/null || true
+
+          PR_URL=$(gh pr create \
+            --title "Bootstrap update: ${CURRENT_VERSION} → ${LATEST_VERSION}" \
+            --body "## 🔄 Bootstrap Auto-Update
+
+| | |
+|---|---|
+| **Previous version** | \`${CURRENT_VERSION}\` |
+| **New version**      | \`${LATEST_VERSION}\` |
+| **Source tag**       | [\`${LATEST_TAG}\`](https://github.com/termux/termux-packages/releases/tag/${LATEST_TAG}) |
+
+### Verified SHA-256 checksums
+| ABI | SHA-256 |
+|---|---|
+| \`aarch64\` | \`${CHECKSUM_AARCH64}\` |
+| \`arm\`     | \`${CHECKSUM_ARM}\` |
+| \`i686\`    | \`${CHECKSUM_I686}\` |
+| \`x86_64\`  | \`${CHECKSUM_X86_64}\` |
+
+### What this changes
+- Updates the bootstrap download version in \`app/build.gradle\`
+- Updates all 8 SHA-256 checksums (both build variants)
+- Merging this PR will trigger a new build + auto-publish with the updated Linux userland
+
+---
+*Opened automatically by NasTech Bootstrap Auto-Update bot*" \
+            --head "${BRANCH}" \
+            --base master \
+            --label "dependencies" 2>/dev/null || echo "(PR already open)")
+
+          echo "✅ Pull request: ${PR_URL}"

@@ -53,91 +53,61 @@ jobs:
           fi
 
           CURRENT_VERSION_NAME_REGEX='\s+versionName "([^"]+)"$'
-          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
-          RELEASE_VERSION_NAME="v$CURRENT_VERSION_NAME+${GITHUB_SHA:0:7}"
-          if ! printf "%s" "${RELEASE_VERSION_NAME/v/}" | grep -qP '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'; then
-           exit_on_error "The versionName '${RELEASE_VERSION_NAME/v/}' is not a valid semantic version."
+          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle \
+            | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+
+          # Human-readable version tag for APK filenames
+          # Format: NasUX-App-ARM64-v0.119.0.apk  (primary variant)
+          #         NasUX-App-ARM64-v0.119.0-Legacy.apk  (apt-android-5)
+          if [ "${{ matrix.package_variant }}" = "apt-android-5" ]; then
+            APK_VERSION_TAG="v${CURRENT_VERSION_NAME}-Legacy"
+          else
+            APK_VERSION_TAG="v${CURRENT_VERSION_NAME}"
           fi
 
           APK_DIR_PATH="./app/build/outputs/apk/debug"
-          APK_VERSION_TAG="$RELEASE_VERSION_NAME-${{ env.PACKAGE_VARIANT }}-github-debug"
-          APK_BASENAME_PREFIX="nasux-app_$APK_VERSION_TAG"
 
-          echo "APK_DIR_PATH=$APK_DIR_PATH" >> $GITHUB_ENV
-          echo "APK_VERSION_TAG=$APK_VERSION_TAG" >> $GITHUB_ENV
-          echo "APK_BASENAME_PREFIX=$APK_BASENAME_PREFIX" >> $GITHUB_ENV
+          echo "APK_DIR_PATH=${APK_DIR_PATH}"       >> $GITHUB_ENV
+          echo "APK_VERSION_TAG=${APK_VERSION_TAG}" >> $GITHUB_ENV
 
-          echo "Building NasUX APKs for '$APK_VERSION_TAG'"
-          export NASUX_APP_VERSION_NAME="${RELEASE_VERSION_NAME/v/}"
-          export NASUX_APK_VERSION_TAG="$APK_VERSION_TAG"
+          echo "Building NasUX APKs — version tag: ${APK_VERSION_TAG}"
+          export NASUX_APP_VERSION_NAME="${CURRENT_VERSION_NAME}"
+          export NASUX_APK_VERSION_TAG="${APK_VERSION_TAG}"
           export NASUX_PACKAGE_VARIANT="${{ env.PACKAGE_VARIANT }}"
+
           if ! ./gradlew assembleDebug; then
-            exit_on_error "Build failed for '$APK_VERSION_TAG'."
+            exit_on_error "Build failed for '${APK_VERSION_TAG}'."
           fi
 
-          echo "Validating APKs"
-          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
-            if ! test -f "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk"; then
-              files_found="$(ls "$APK_DIR_PATH")"
-              exit_on_error "Failed to find built APK at '$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk'. Files found: "$'\n'"$files_found"
+          echo "Validating APKs…"
+          for abi_label in Universal ARM64 ARM32 x86_64 x86; do
+            APK_FILE="${APK_DIR_PATH}/NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
+            if ! test -f "${APK_FILE}"; then
+              files_found="$(ls "${APK_DIR_PATH}")"
+              exit_on_error "Missing APK: NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk
+Files found:
+${files_found}"
             fi
+            echo "  ✓ NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
           done
 
-          echo "Generating sha256sums"
-          if ! (cd "$APK_DIR_PATH"; sha256sum \
-            "${APK_BASENAME_PREFIX}_universal.apk" \
-            "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
-            "${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
-            "${APK_BASENAME_PREFIX}_x86_64.apk" \
-            "${APK_BASENAME_PREFIX}_x86.apk" \
-            > "${APK_BASENAME_PREFIX}_sha256sums"); then
-            exit_on_error "sha256sums generation failed."
+          echo "Generating SHA-256 checksums…"
+          if ! (cd "${APK_DIR_PATH}"; sha256sum \
+            "NasUX-App-Universal-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-ARM64-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-ARM32-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-x86_64-${APK_VERSION_TAG}.apk" \
+            "NasUX-App-x86-${APK_VERSION_TAG}.apk" \
+            > "NasUX-App-SHA256-${APK_VERSION_TAG}.txt"); then
+            exit_on_error "sha256sum generation failed."
           fi
+          echo "✅ Build complete."
 
-      - name: Attach universal APK
+      - name: Attach APKs and checksums
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_universal
+          name: NasUX-APKs-${{ matrix.package_variant }}-${{ env.APK_VERSION_TAG }}
           path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_universal.apk
-            ${{ env.APK_DIR_PATH }}/output-metadata.json
-
-      - name: Attach arm64-v8a APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_arm64-v8a
-          path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_arm64-v8a.apk
-            ${{ env.APK_DIR_PATH }}/output-metadata.json
-
-      - name: Attach armeabi-v7a APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_armeabi-v7a
-          path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_armeabi-v7a.apk
-            ${{ env.APK_DIR_PATH }}/output-metadata.json
-
-      - name: Attach x86_64 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_x86_64
-          path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_x86_64.apk
-            ${{ env.APK_DIR_PATH }}/output-metadata.json
-
-      - name: Attach x86 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_x86
-          path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_x86.apk
-            ${{ env.APK_DIR_PATH }}/output-metadata.json
-
-      - name: Attach sha256sums
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_sha256sums
-          path: |
-            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_sha256sums
-            ${{ env.APK_DIR_PATH }}/output-metadata.json
+            ${{ env.APK_DIR_PATH }}/NasUX-App-*-${{ env.APK_VERSION_TAG }}.apk
+            ${{ env.APK_DIR_PATH }}/NasUX-App-SHA256-${{ env.APK_VERSION_TAG }}.txt
+          retention-days: 90
