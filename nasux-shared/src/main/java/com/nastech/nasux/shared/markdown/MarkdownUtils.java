@@ -43,7 +43,7 @@ import io.noties.prism4j.annotations.PrismBundle;
 
 @PrismBundle(
     include = {
-        "shell", "clike", "c", "cpp", "python", "java", "javascript",
+        "clike", "c", "cpp", "python", "java", "javascript",
         "json", "yaml", "sql"
     },
     grammarLocatorClassName = ".NasUXGrammarLocator"
