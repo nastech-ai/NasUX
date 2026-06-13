@@ -150,6 +150,16 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        // org.jetbrains:annotations:13.0 (pulled by older deps) and
+        // org.jetbrains:annotations-java5:17.0.0 (pulled by newer deps) share
+        // duplicate classes — force the newer single artifact.
+        force "org.jetbrains:annotations-java5:17.0.0"
+    }
+    exclude group: "org.jetbrains", module: "annotations"
+}
+
 dependencies {
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.robolectric:robolectric:4.10"
