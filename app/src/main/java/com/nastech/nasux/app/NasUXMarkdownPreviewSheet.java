@@ -47,14 +47,14 @@ public class NasUXMarkdownPreviewSheet extends BottomSheetDialogFragment {
         return sheet;
     }
 
-    public static void show(FragmentManager fm, String initialContent) {
+    public static void showSheet(FragmentManager fm, String initialContent) {
         create(initialContent).show(fm, TAG);
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(BottomSheetDialogFragment.STYLE_NORMAL, R.style.NasUX.MarkdownSheet);
+        setStyle(BottomSheetDialogFragment.STYLE_NORMAL, R.style.NasUX_MarkdownSheet);
     }
 
     @Nullable
