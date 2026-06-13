@@ -45,7 +45,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.118.0] — 2026-06-01
 
 ### ✨ New Features
-- Complete rebrand: Termux → NasUX / NasTech AI throughout codebase
+- Full rebranding to NasUX / NasTech AI throughout the entire codebase
 - Package renamed to `com.nastech.nasux`
 - Module renamed to `nasux-shared`
 - All user-facing strings, colours, and resources rebranded

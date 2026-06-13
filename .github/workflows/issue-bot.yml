@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   issue-bot:
-    name: Issue Bot — ${{ github.event.workflow_run.name }}
+    name: Issue Bot — ${{ github.event.workflow_run.name || 'manual' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -42,70 +42,86 @@ jobs:
           WF_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
           REPO:           ${{ github.repository }}
         run: |
+          # Guard: nothing to do if triggered without a workflow_run payload
+          if [ -z "${WF_NAME}" ] || [ -z "${WF_CONCLUSION}" ]; then
+            echo "No workflow_run payload — manual trigger or unsupported event. Skipping."
+            exit 0
+          fi
+
           SHORT_SHA="${WF_HEAD_SHA:0:7}"
           LABEL="ci-failure"
           ISSUE_TITLE="[CI Failure] ${WF_NAME}"
 
-          echo "Workflow: ${WF_NAME}"
-          echo "Conclusion: ${WF_CONCLUSION}"
-          echo "SHA: ${SHORT_SHA}"
+          echo "Workflow : ${WF_NAME}"
+          echo "Result   : ${WF_CONCLUSION}"
+          echo "SHA      : ${SHORT_SHA}"
 
-          # ── Ensure the ci-failure label exists ───────────────────────────────
+          # ── Ensure labels exist (ignore errors if they already do) ────────────
           gh label create "${LABEL}" \
             --description "Automated CI failure tracked by NasTech Issue Bot" \
-            --color "d73a4a" \
-            --repo "${REPO}" 2>/dev/null || true
+            --color "d73a4a" --repo "${REPO}" 2>/dev/null || true
 
           gh label create "ci-fixed" \
             --description "CI issue resolved and auto-closed" \
-            --color "0e8a16" \
-            --repo "${REPO}" 2>/dev/null || true
+            --color "0e8a16" --repo "${REPO}" 2>/dev/null || true
 
           gh label create "auto-bot" \
             --description "Created or managed by NasTech Issue Bot" \
-            --color "e4e669" \
-            --repo "${REPO}" 2>/dev/null || true
+            --color "e4e669" --repo "${REPO}" 2>/dev/null || true
 
-          # ── Find any open issue for this workflow ────────────────────────────
+          # ── Find any open issue for this workflow ─────────────────────────────
+          EXISTING_ISSUE=""
           EXISTING_ISSUE=$(gh issue list \
             --repo "${REPO}" \
             --state open \
             --label "${LABEL}" \
             --json number,title \
             --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
-            | head -1 || echo "")
+            2>/dev/null | head -1) || EXISTING_ISSUE=""
 
           if [ "${WF_CONCLUSION}" = "failure" ]; then
-            # ── BUILD FAILED ─────────────────────────────────────────────────
+            # ── BUILD FAILED ──────────────────────────────────────────────────
 
-            # Get the failed jobs for context
-            FAILED_JOBS=$(gh api \
-              "repos/${REPO}/actions/runs/${WF_RUN_ID}/jobs" \
-              --jq '.jobs[] | select(.conclusion=="failure") | "- **\(.name)** → failed step: \(.steps[]? | select(.conclusion=="failure") | .name)"' \
-              2>/dev/null | head -10 || echo "- (could not retrieve job details)")
+            # Try to collect failed job details; fall back gracefully
+            FAILED_JOBS=""
+            if [ -n "${WF_RUN_ID}" ]; then
+              FAILED_JOBS=$(gh api \
+                "repos/${REPO}/actions/runs/${WF_RUN_ID}/jobs" \
+                --jq '.jobs[] | select(.conclusion=="failure") |
+                      "- **\(.name)**" +
+                      if (.steps | length) > 0
+                      then " — failed step: `" + (
+                        (.steps[] | select(.conclusion=="failure") | .name)
+                        // "unknown"
+                      ) + "`"
+                      else ""
+                      end' \
+                2>/dev/null | head -10) || FAILED_JOBS=""
+            fi
+            [ -z "${FAILED_JOBS}" ] && FAILED_JOBS="- (see run logs for details)"
 
+            NOW=$(date -u +"%Y-%m-%d %H:%M UTC")
             BODY="## ❌ CI Failure Detected
 
 **Workflow:** \`${WF_NAME}\`
-**Branch:** \`${WF_HEAD_BRANCH}\`
-**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
-**Run:** [View run logs](${WF_HTML_URL})
-**Time:** $(date -u +"%Y-%m-%d %H:%M UTC")
+**Branch:**   \`${WF_HEAD_BRANCH}\`
+**Commit:**   [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
+**Run:**      [View run logs](${WF_HTML_URL})
+**Time:**     ${NOW}
 
 ### Failed Jobs
 ${FAILED_JOBS}
 
 ### How to fix
-1. Click **View run logs** above to see the full error output
-2. Fix the issue in your code
-3. Push to master — this issue will auto-close when the workflow passes again
+1. Click **View run logs** above to see the full error
+2. Fix the problem in your code and push to master
+3. This issue closes automatically when the workflow passes again
 
 ---
 *Opened automatically by NasTech Issue Bot*"
 
             if [ -n "${EXISTING_ISSUE}" ]; then
-              # Add a comment to the existing open issue
-              echo "Adding failure comment to existing issue #${EXISTING_ISSUE}"
+              echo "Commenting on existing issue #${EXISTING_ISSUE}"
               gh issue comment "${EXISTING_ISSUE}" \
                 --repo "${REPO}" \
                 --body "## 🔴 Still Failing ($(date -u +"%Y-%m-%d %H:%M UTC"))
@@ -115,44 +131,47 @@ ${FAILED_JOBS}
 
 ${FAILED_JOBS}
 
-*Updated by NasTech Issue Bot*"
+*Updated by NasTech Issue Bot*" 2>/dev/null || echo "⚠️ Could not comment on issue"
             else
-              # Open a new issue
-              echo "Opening new failure issue: ${ISSUE_TITLE}"
+              echo "Opening new issue: ${ISSUE_TITLE}"
               NEW_ISSUE=$(gh issue create \
                 --repo "${REPO}" \
                 --title "${ISSUE_TITLE}" \
                 --body "${BODY}" \
                 --label "${LABEL}" \
-                --label "auto-bot")
-              echo "Created issue: ${NEW_ISSUE}"
+                --label "auto-bot" 2>/dev/null) || NEW_ISSUE=""
+              if [ -n "${NEW_ISSUE}" ]; then
+                echo "✅ Created: ${NEW_ISSUE}"
+              else
+                echo "⚠️ Could not create issue (check token permissions)"
+              fi
             fi
 
           elif [ "${WF_CONCLUSION}" = "success" ]; then
-            # ── BUILD PASSED — close any open failure issue ───────────────────
+            # ── BUILD PASSED — close open failure issue if any ────────────────
 
             if [ -n "${EXISTING_ISSUE}" ]; then
               echo "Closing resolved issue #${EXISTING_ISSUE}"
+
               gh issue comment "${EXISTING_ISSUE}" \
                 --repo "${REPO}" \
                 --body "## ✅ Fixed! ($(date -u +"%Y-%m-%d %H:%M UTC"))
 
-**Workflow:** \`${WF_NAME}\` is now passing.
+\`${WF_NAME}\` is now passing.
 **Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
 **Run:** [View passing run](${WF_HTML_URL})
 
 Auto-closing this issue.
 
-*Resolved by NasTech Issue Bot*"
+*Resolved by NasTech Issue Bot*" 2>/dev/null || true
 
               gh issue close "${EXISTING_ISSUE}" \
-                --repo "${REPO}" \
-                --reason "completed" || true
+                --repo "${REPO}" --reason "completed" 2>/dev/null || true
 
               gh issue edit "${EXISTING_ISSUE}" \
                 --repo "${REPO}" \
                 --add-label "ci-fixed" \
-                --remove-label "${LABEL}" || true
+                --remove-label "${LABEL}" 2>/dev/null || true
 
               echo "✅ Issue #${EXISTING_ISSUE} closed."
             else
@@ -160,5 +179,5 @@ Auto-closing this issue.
             fi
 
           else
-            echo "Conclusion '${WF_CONCLUSION}' — no action needed."
+            echo "Conclusion '${WF_CONCLUSION}' — no action required."
           fi

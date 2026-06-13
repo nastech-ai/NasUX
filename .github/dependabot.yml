@@ -14,11 +14,6 @@ updates:
     labels:
       - dependencies
       - github-actions
-    groups:
-      actions-minor:
-        update-types:
-          - minor
-          - patch
 
   # ── Gradle (Android) dependencies ─────────────────────────────────────────────
   - package-ecosystem: gradle
@@ -48,17 +43,3 @@ updates:
           - minor
           - patch
 
-  # ── Python (NasTech Agent) ───────────────────────────────────────────────────
-  - package-ecosystem: pip
-    directory: /app/src/main/assets
-    schedule:
-      interval: weekly
-      day: wednesday
-      time: "06:00"
-      timezone: UTC
-    commit-message:
-      prefix: "chore(agent-deps)"
-    labels:
-      - dependencies
-      - nastech-agent
-    open-pull-requests-limit: 5
