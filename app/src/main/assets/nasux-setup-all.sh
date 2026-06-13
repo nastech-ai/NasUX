@@ -39,6 +39,42 @@ echo "" > "$LOG_FILE"
 info "Log: $LOG_FILE"
 info "Started: $(date)"
 
+# ─── Step 0: Configure NasUX APT Repository ─────────────────────────────────
+step "Step 0/6: NasUX Repository Setup"
+
+NASUX_REPO_URL="https://packages-cf.nasux.dev/apt/nasux-main"
+NASUX_SOURCES_FILE="${PREFIX}/etc/apt/sources.list"
+NASUX_SOURCES_DIR="${PREFIX}/etc/apt/sources.list.d"
+
+# Ensure apt sources exist and point to NasUX repo
+if [ -f "$NASUX_SOURCES_FILE" ]; then
+    if ! grep -q "packages-cf.nasux.dev" "$NASUX_SOURCES_FILE" 2>/dev/null; then
+        warn "NasUX repo not found in sources.list — adding it"
+        echo "deb $NASUX_REPO_URL stable main" >> "$NASUX_SOURCES_FILE"
+        log "Added NasUX repo to sources.list"
+    else
+        log "NasUX repo already configured in sources.list"
+    fi
+else
+    info "Creating ${NASUX_SOURCES_FILE}..."
+    mkdir -p "$(dirname "$NASUX_SOURCES_FILE")"
+    echo "deb $NASUX_REPO_URL stable main" > "$NASUX_SOURCES_FILE"
+    log "Created sources.list with NasUX repo"
+fi
+
+# Also verify the NasUX-specific sources directory
+if [ -d "$NASUX_SOURCES_DIR" ]; then
+    if ! grep -rl "packages-cf.nasux.dev" "$NASUX_SOURCES_DIR" 2>/dev/null | grep -q .; then
+        info "Writing nasux-main.list to sources.list.d..."
+        echo "deb $NASUX_REPO_URL stable main" > "${NASUX_SOURCES_DIR}/nasux-main.list"
+        log "Created ${NASUX_SOURCES_DIR}/nasux-main.list"
+    fi
+fi
+
+info "Updating package lists..."
+pkg update -y 2>&1 | tail -5
+log "Package lists updated"
+
 # ─── Step 1: System Packages ────────────────────────────────────────────────
 step "Step 1/6: System Packages"
 
@@ -120,7 +156,6 @@ NASUX_CORE_PKGS=(
 )
 
 info "Installing ${#SYSTEM_PKGS[@]} system packages…"
-pkg update -y 2>&1 | tail -3
 for pkg in "${SYSTEM_PKGS[@]}"; do
     pkg install -y "$pkg" 2>/dev/null && log "$pkg" || warn "Skipped: $pkg"
 done
