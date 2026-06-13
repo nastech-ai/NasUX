@@ -47,6 +47,7 @@ import com.nastech.nasux.app.activities.HelpActivity;
 import com.nastech.nasux.app.activities.SettingsActivity;
 import com.nastech.nasux.shared.nasux.crash.NasUXCrashUtils;
 import com.nastech.nasux.shared.nasux.settings.preferences.NasUXAppSharedPreferences;
+import com.nastech.nasux.app.NasUXMarkdownPreviewSheet;
 import com.nastech.nasux.app.terminal.NasUXSessionsListViewController;
 import com.nastech.nasux.app.terminal.io.TerminalToolbarViewPager;
 import com.nastech.nasux.app.terminal.NasUXTerminalViewClient;
@@ -385,10 +386,9 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
             runNasTechCommand("bash ~/nastech-agent/start.sh\n", "NasTech AI");
         });
 
-        // Long press: toggle FAB visibility with a slide-out animation
+        // Long press: open Markdown / Code Preview sheet
         fab.setOnLongClickListener(v -> {
-            Toast.makeText(this, "NasTech AI — tap to summon, long-press to hide",
-                Toast.LENGTH_SHORT).show();
+            NasUXMarkdownPreviewSheet.show(getSupportFragmentManager(), null);
             return true;
         });
     }

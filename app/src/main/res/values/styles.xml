@@ -21,6 +21,19 @@
         <item name="android:textColor">@color/nastech_accent</item>
     </style>
 
+    <!-- BottomSheet style for markdown preview -->
+    <style name="NasUX.MarkdownSheet" parent="Theme.MaterialComponents.BottomSheetDialog">
+        <item name="android:windowIsFloating">false</item>
+        <item name="bottomSheetStyle">@style/NasUX.MarkdownSheet.Inner</item>
+        <item name="colorPrimary">@color/nastech_accent</item>
+    </style>
+
+    <style name="NasUX.MarkdownSheet.Inner" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="android:background">@drawable/rounded_dialog_bg</item>
+        <item name="behavior_peekHeight">420dp</item>
+        <item name="behavior_skipCollapsed">true</item>
+    </style>
+
     <!-- Drawer button styles -->
     <style name="NasUXActivity.Drawer.ButtonBarStyle.Light" parent="@style/Widget.MaterialComponents.Button.TextButton">
         <item name="android:textColor">@color/nastech_accent</item>

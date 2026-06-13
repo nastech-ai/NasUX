@@ -1,6 +1,5 @@
 package com.nastech.nasux.app.terminal;
 
-import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Typeface;
@@ -8,43 +7,44 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.style.AbsoluteSizeSpan;
 import android.text.style.ForegroundColorSpan;
 import android.util.AttributeSet;
-import android.view.animation.LinearInterpolator;
+import android.view.animation.AccelerateDecelerateInterpolator;
 
 import androidx.appcompat.widget.AppCompatTextView;
 
 /**
- * NasUXStreamingTextView — animated character-by-character streaming output.
+ * NasUXStreamingTextView — smooth word-by-word AI streaming output.
  *
- * Designed for NasTech AI responses: text streams in one character at a time
- * with a blinking cursor at the end. The teal NasTech accent color highlights
- * the most recently streamed text, then fades to normal.
+ * Streams text word-by-word (not char-by-char) so output is always readable.
+ * Cursor is a ● that bounces using a smooth ValueAnimator pulse.
  *
  * Usage:
- *   streamingView.startStreaming("NasTech AI response text here...");
- *   streamingView.stopStreaming();
- *   streamingView.appendChunk("delta text");  // for real streaming deltas
+ *   streamingView.startStreaming("NasTech AI response text…");
+ *   streamingView.appendChunk("more text");   // for real SSE deltas
+ *   streamingView.stopStreaming();             // show full text immediately
  */
 public class NasUXStreamingTextView extends AppCompatTextView {
 
-    private static final int CHAR_DELAY_MS   = 18;
-    private static final int CURSOR_BLINK_MS = 530;
-    private static final String CURSOR       = "▋";
-    private static final int COLOR_ACCENT    = 0xFF00C8B8;
-    private static final int COLOR_NORMAL    = 0xFFDDDDDD;
-    private static final int COLOR_CURSOR    = 0xFF00C8B8;
+    private static final int   WORD_DELAY_MS  = 55;
+    private static final int   LINE_DELAY_MS  = 90;
+    private static final String CURSOR        = "●";
+    private static final int   COLOR_ACCENT   = 0xFF00C8B8;
+    private static final int   COLOR_NORMAL   = 0xFFDDDDDD;
+    private static final int   COLOR_CURSOR   = 0xFF00C8B8;
 
-    private final Handler  mHandler    = new Handler(Looper.getMainLooper());
-    private final SpannableStringBuilder mBuffer = new SpannableStringBuilder();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
-    private String  mFullText       = "";
-    private int     mCharIndex      = 0;
-    private boolean mStreaming      = false;
-    private boolean mCursorVisible  = true;
+    private String  mFullText    = "";
+    private int     mWordIndex   = 0;
+    private boolean mStreaming   = false;
+
+    private ValueAnimator mCursorAnimator;
+    private float         mCursorScale = 1.0f;
+    private boolean       mCursorOn    = true;
 
     private Runnable mStreamRunnable;
-    private Runnable mCursorRunnable;
 
     public NasUXStreamingTextView(Context context) {
         super(context);
@@ -64,101 +64,136 @@ public class NasUXStreamingTextView extends AppCompatTextView {
     private void init() {
         setTypeface(Typeface.MONOSPACE);
         setTextColor(COLOR_NORMAL);
-        setTextSize(12f);
-        setLineSpacing(2f, 1f);
+        setTextSize(12.5f);
+        setLineSpacing(3f, 1f);
+        setIncludeFontPadding(false);
     }
 
-    /**
-     * Start streaming the given text character-by-character.
-     * Cancels any ongoing stream first.
-     */
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /** Stream text word-by-word with bouncing ● cursor. */
     public void startStreaming(String text) {
         stopStreaming();
         mFullText  = text == null ? "" : text;
-        mCharIndex = 0;
-        mBuffer.clear();
+        mWordIndex = 0;
         mStreaming = true;
-
-        scheduleNextChar();
-        startCursorBlink();
+        startCursorPulse();
+        scheduleNextWord();
     }
 
-    /**
-     * Append a delta chunk to the current stream (for SSE / real-time streaming).
-     * If not currently streaming, starts the stream.
-     */
+    /** Append a delta chunk (SSE / real-time). Starts stream if not running. */
     public void appendChunk(String chunk) {
         if (chunk == null || chunk.isEmpty()) return;
         mFullText += chunk;
         if (!mStreaming) {
             mStreaming = true;
-            scheduleNextChar();
-            startCursorBlink();
+            startCursorPulse();
+            scheduleNextWord();
         }
     }
 
-    /**
-     * Stop streaming and show the full text immediately.
-     */
+    /** Stop animation and show complete text immediately. */
     public void stopStreaming() {
         mStreaming = false;
-        mHandler.removeCallbacks(mStreamRunnable != null ? mStreamRunnable : () -> {});
-        mHandler.removeCallbacks(mCursorRunnable != null ? mCursorRunnable : () -> {});
-
+        cancelCursorPulse();
+        if (mStreamRunnable != null) {
+            mHandler.removeCallbacks(mStreamRunnable);
+            mStreamRunnable = null;
+        }
         if (!mFullText.isEmpty()) {
             setText(mFullText);
         }
     }
 
-    /**
-     * Reset and clear the view.
-     */
+    /** Clear everything. */
     public void reset() {
         stopStreaming();
         mFullText  = "";
-        mCharIndex = 0;
-        mBuffer.clear();
+        mWordIndex = 0;
         setText("");
     }
 
-    private void scheduleNextChar() {
-        mStreamRunnable = this::streamNextChar;
-        mHandler.postDelayed(mStreamRunnable, CHAR_DELAY_MS);
-    }
+    // ── Streaming logic ───────────────────────────────────────────────────────
 
-    private void streamNextChar() {
-        if (!mStreaming) return;
-        if (mCharIndex >= mFullText.length()) {
-            mStreaming = false;
-            mHandler.removeCallbacks(mCursorRunnable != null ? mCursorRunnable : () -> {});
-            renderText(false);
+    private void scheduleNextWord() {
+        // Find next word boundary: advance to after the next whitespace run
+        int start = mWordIndex;
+        if (start >= mFullText.length()) {
+            finishStreaming();
             return;
         }
 
-        mCharIndex++;
-        renderText(true);
-        scheduleNextChar();
+        // Scan forward to end of next "word" (non-whitespace token)
+        int i = start;
+        // Skip leading whitespace if any (shouldn't happen normally, but safe)
+        while (i < mFullText.length() && mFullText.charAt(i) == ' ') i++;
+        // Advance to next space or newline
+        while (i < mFullText.length()
+                && mFullText.charAt(i) != ' '
+                && mFullText.charAt(i) != '\n') {
+            i++;
+        }
+        // Include the trailing whitespace character
+        if (i < mFullText.length()) i++;
+
+        final int nextIndex = Math.min(i, mFullText.length());
+        boolean isNewline = nextIndex > 0 && nextIndex <= mFullText.length()
+                && mFullText.charAt(nextIndex - 1) == '\n';
+
+        int delay = isNewline ? LINE_DELAY_MS : WORD_DELAY_MS;
+
+        mStreamRunnable = () -> {
+            if (!mStreaming) return;
+            mWordIndex = nextIndex;
+            renderText(true);
+
+            if (mWordIndex >= mFullText.length()) {
+                finishStreaming();
+            } else {
+                scheduleNextWord();
+            }
+        };
+        mHandler.postDelayed(mStreamRunnable, delay);
     }
 
+    private void finishStreaming() {
+        mStreaming = false;
+        cancelCursorPulse();
+        renderText(false);
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+
     private void renderText(boolean showCursor) {
-        String visible = mFullText.substring(0, mCharIndex);
+        String visible = mFullText.substring(0, mWordIndex);
         SpannableStringBuilder ssb = new SpannableStringBuilder(visible);
 
-        if (mCharIndex > 0) {
-            int lastCharStart = Math.max(0, mCharIndex - 1);
+        // Teal accent on the last word that just appeared
+        if (mWordIndex > 0) {
+            int wordStart = findLastWordStart(visible);
             ssb.setSpan(
                 new ForegroundColorSpan(COLOR_ACCENT),
-                lastCharStart, mCharIndex,
+                wordStart, visible.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             );
         }
 
-        if (showCursor && mCursorVisible) {
+        if (showCursor && mCursorOn) {
             int cursorStart = ssb.length();
-            ssb.append(CURSOR);
+            ssb.append(" ").append(CURSOR);
+
+            // Bouncing size: base px scaled by mCursorScale
+            int basePx  = (int) getTextSize();
+            int pulsePx = Math.max(8, (int)(basePx * mCursorScale));
+
             ssb.setSpan(
                 new ForegroundColorSpan(COLOR_CURSOR),
                 cursorStart, ssb.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            );
+            ssb.setSpan(
+                new AbsoluteSizeSpan(pulsePx),
+                cursorStart + 1, ssb.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             );
         }
@@ -166,17 +201,47 @@ public class NasUXStreamingTextView extends AppCompatTextView {
         setText(ssb);
     }
 
-    private void startCursorBlink() {
-        mCursorRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (!mStreaming && mCharIndex >= mFullText.length()) return;
-                mCursorVisible = !mCursorVisible;
-                renderText(mStreaming || mCharIndex < mFullText.length());
-                mHandler.postDelayed(this, CURSOR_BLINK_MS);
+    /** Find the start index of the last "word" in the string. */
+    private int findLastWordStart(String s) {
+        if (s.isEmpty()) return 0;
+        int end = s.length() - 1;
+        // skip trailing whitespace
+        while (end > 0 && Character.isWhitespace(s.charAt(end))) end--;
+        // walk back to start of the word
+        int start = end;
+        while (start > 0 && !Character.isWhitespace(s.charAt(start - 1))) start--;
+        return start;
+    }
+
+    // ── Cursor pulse animation ─────────────────────────────────────────────────
+
+    private void startCursorPulse() {
+        cancelCursorPulse();
+        mCursorOn = true;
+
+        mCursorAnimator = ValueAnimator.ofFloat(0.75f, 1.45f);
+        mCursorAnimator.setDuration(700);
+        mCursorAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        mCursorAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        mCursorAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
+        mCursorAnimator.addUpdateListener(anim -> {
+            mCursorScale = (float) anim.getAnimatedValue();
+            // Flash off at the bottom of the bounce for a "blink-bounce" effect
+            mCursorOn = (mCursorScale > 0.85f);
+            if (mWordIndex > 0 || mStreaming) {
+                renderText(mStreaming || mWordIndex < mFullText.length());
             }
-        };
-        mHandler.postDelayed(mCursorRunnable, CURSOR_BLINK_MS);
+        });
+        mCursorAnimator.start();
+    }
+
+    private void cancelCursorPulse() {
+        if (mCursorAnimator != null) {
+            mCursorAnimator.cancel();
+            mCursorAnimator = null;
+        }
+        mCursorOn    = false;
+        mCursorScale = 1.0f;
     }
 
     @Override
