@@ -1,5 +1,7 @@
 package com.nastech.nasux.app;
 
+
+import com.nastech.nasux.R;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;

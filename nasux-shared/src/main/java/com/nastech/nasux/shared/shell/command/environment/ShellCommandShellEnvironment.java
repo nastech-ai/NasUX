@@ -28,7 +28,7 @@ public class ShellCommandShellEnvironment {
 
     /** Environment variable for the {@link ExecutionCommand#shellName} name. */
     public static final String ENV_SHELL_CMD__SHELL_NAME = SHELL_CMD_ENV_PREFIX + "SHELL_NAME";
-    
+
     /** Environment variable for the {@link ExecutionCommand.Runner#APP_SHELL} number since boot. */
     public static final String ENV_SHELL_CMD__APP_SHELL_NUMBER_SINCE_BOOT = SHELL_CMD_ENV_PREFIX + "APP_SHELL_NUMBER_SINCE_BOOT";
 

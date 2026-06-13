@@ -1,5 +1,7 @@
 package com.nastech.nasux.app.terminal.io;
 
+
+import com.nastech.nasux.R;
 import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;

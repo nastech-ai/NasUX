@@ -120,7 +120,7 @@ public class NasUXAmSocketServer {
             nasuxAmSocketServer = null;
         }
     }
-    
+
     /**
      * Update the state of the {@link AmSocketServer} {@link LocalServerSocket} depending on current
      * value of {@link NasUXPropertyConstants#KEY_RUN_NASUX_AM_SOCKET_SERVER}.
@@ -139,7 +139,7 @@ public class NasUXAmSocketServer {
             }
         }
     }
-    
+
     /**
      * Get {@link #nasuxAmSocketServer}.
      */

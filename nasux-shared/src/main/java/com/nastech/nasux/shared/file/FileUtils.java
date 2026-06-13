@@ -285,7 +285,7 @@ public class FileUtils {
                     return true;
                 }
             }
-                
+
             if (getFileType(subFilePath, false) == FileType.DIRECTORY) {
                 // If non ignored sub file found, then early exit, otherwise continue looking
                 if (nonIgnoredSubFileExists(subFile.listFiles(), ignoredSubFilePaths))

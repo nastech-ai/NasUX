@@ -238,7 +238,7 @@ public class NasUXTerminalSessionActivityClient extends NasUXTerminalSessionClie
     public void setTerminalShellPid(@NonNull TerminalSession terminalSession, int pid) {
         NasUXService service = mActivity.getNasUXService();
         if (service == null) return;
-        
+
         NasUXSession nasuxSession = service.getNasUXSessionForTerminalSession(terminalSession);
         if (nasuxSession != null)
             nasuxSession.getExecutionCommand().mPid = pid;
