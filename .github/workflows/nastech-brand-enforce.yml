@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master, main ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   brand-check:
     name: Enforce NasTech Branding
@@ -48,12 +51,14 @@ jobs:
           done
 
           # Find violations in Java, XML, strings, Gradle, Kotlin files
+          # Note: --exclude-dir matches directory NAME only (not path).
+          # "nastech-agent" excludes app/src/main/assets/nastech-agent/ (bundled docs).
           FOUND=$(grep -rn --include="*.java" --include="*.xml" --include="*.kt" \
               --include="*.gradle" --include="*.md" \
               -i "termux" . \
               --exclude-dir=".git" \
               --exclude-dir=".local" \
-              --exclude-dir="assets/nastech-agent" \
+              --exclude-dir="nastech-agent" \
               --exclude-dir=".agents" \
               | grep -v "termux-tools" \
               | grep -v "@TERMUX_PREFIX@" \
