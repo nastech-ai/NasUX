@@ -27,7 +27,7 @@ Use any model you want — [NasTech Portal](https://portal.nastech.com), [OpenRo
 
 ## Quick Install
 
-### Linux, macOS, WSL2, Termux
+### Linux, macOS, WSL2, NasUX
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nastech-ai/NasTech-Agent/main/scripts/install.sh | bash
@@ -47,7 +47,7 @@ The installer handles everything: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **a
 
 If you already have Git installed, the installer detects it and uses that instead.  Otherwise a ~45MB MinGit download is all you need — it won't touch or interfere with any system Git.
 
-> **Android / Termux:** The tested manual path is documented in the [Termux guide](https://docs.nastech-agent.workers.dev/docs/getting-started/termux). On Termux, NasTech installs a curated `.[termux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
+> **Android / NasUX:** The tested manual path is documented in the [NasUX guide](https://docs.nastech-agent.workers.dev/docs/getting-started/nasux). On NasUX, NasTech installs a curated `.[nasux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
 >
 > **Windows:** Native Windows is supported as an **early beta** — the PowerShell one-liner above installs everything, but expect rough edges and please file issues when you hit them. If you'd rather use WSL2 (our most battle-tested Windows path), the Linux command works there too. Native Windows install lives under `%LOCALAPPDATA%\nastech`; WSL2 installs under `~/.nastech` as on Linux.  The only NasTech feature that currently needs WSL2 specifically is the browser-based dashboard chat pane (it uses a POSIX PTY — classic CLI and gateway both run natively).
 

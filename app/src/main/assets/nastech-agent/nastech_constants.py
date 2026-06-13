@@ -383,7 +383,7 @@ def is_android_terminal() -> bool:
         is_nasux()
         or os.getenv("TERMUX_VERSION")
         or "com.termux/files/usr" in prefix
-        or os.getenv("TERMUX_APP_PACKAGE_NAME", "").startswith("com.termux")
+        or os.getenv("TERMUX_APP_PACKAGE_NAME", "").startswith("com.nasux")
     )
     return _nasux_terminal_cache
 

@@ -3,7 +3,7 @@
 **Release Date:** April 13, 2026
 **Since v0.8.0:** 487 commits · 269 merged PRs · 167 resolved issues · 493 files changed · 63,281 insertions · 24 contributors
 
-> The everywhere release — NasTech goes mobile with Termux/Android, adds iMessage and WeChat, ships Fast Mode for OpenAI and Anthropic, introduces background process monitoring, launches a local web dashboard for managing your agent, and delivers the deepest security hardening pass yet across 16 supported platforms.
+> The everywhere release — NasTech goes mobile with NasUX/Android, adds iMessage and WeChat, ships Fast Mode for OpenAI and Anthropic, introduces background process monitoring, launches a local web dashboard for managing your agent, and delivers the deepest security hardening pass yet across 16 supported platforms.
 
 ---
 
@@ -17,7 +17,7 @@
 
 - **WeChat (Weixin) & WeCom Callback Mode** — Native WeChat support via iLink Bot API and a new WeCom callback-mode adapter for self-built enterprise apps. Streaming cursor, media uploads, markdown link handling, and atomic state persistence. NasTech now covers the Chinese messaging ecosystem end-to-end. ([#7166](https://github.com/nastech-ai/NasTech-Agent/pull/7166), [#7943](https://github.com/nastech-ai/NasTech-Agent/pull/7943))
 
-- **Termux / Android Support** — Run NasTech natively on Android via Termux. Adapted install paths, TUI optimizations for mobile screens, voice backend support, and the `/image` command work on-device. ([#6834](https://github.com/nastech-ai/NasTech-Agent/pull/6834))
+- **NasUX / Android Support** — Run NasTech natively on Android via NasUX. Adapted install paths, TUI optimizations for mobile screens, voice backend support, and the `/image` command work on-device. ([#6834](https://github.com/nastech-ai/NasTech-Agent/pull/6834))
 
 - **Background Process Monitoring (`watch_patterns`)** — Set patterns to watch for in background process output and get notified in real-time when they match. Monitor for errors, wait for specific events ("listening on port"), or watch build logs — all without polling. ([#7635](https://github.com/nastech-ai/NasTech-Agent/pull/7635))
 
@@ -132,7 +132,7 @@
 ## 🖥️ CLI & User Experience
 
 ### Interactive CLI
-- **Termux / Android support** — adapted install paths, TUI, voice, `/image` ([#6834](https://github.com/nastech-ai/NasTech-Agent/pull/6834))
+- **NasUX / Android support** — adapted install paths, TUI, voice, `/image` ([#6834](https://github.com/nastech-ai/NasTech-Agent/pull/6834))
 - **Native `/model` picker modal** for provider → model selection ([#8003](https://github.com/nastech-ai/NasTech-Agent/pull/8003))
 - **Live per-tool elapsed timer** restored in TUI spinner ([#7359](https://github.com/nastech-ai/NasTech-Agent/pull/7359))
 - **Stacked tool progress scrollback** in TUI ([#8201](https://github.com/nastech-ai/NasTech-Agent/pull/8201))

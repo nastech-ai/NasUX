@@ -34,9 +34,9 @@
 curl -fsSL https://raw.githubusercontent.com/nastech-ai/NasTech-Agent/main/scripts/install.sh | bash
 ```
 
-支持 Linux、macOS、WSL2 和 Android (Termux)。安装程序会自动处理平台特定的配置。
+支持 Linux、macOS、WSL2 和 Android (NasUX)。安装程序会自动处理平台特定的配置。
 
-> **Android / Termux：** 已测试的手动安装路径请参考 [Termux 指南](https://docs.nastech-agent.workers.dev/docs/getting-started/termux)。在 Termux 上，NasTech 会安装精选的 `.[termux]` 扩展，因为完整的 `.[all]` 扩展会拉取 Android 不兼容的语音依赖。
+> **Android / NasUX：** 已测试的手动安装路径请参考 [NasUX 指南](https://docs.nastech-agent.workers.dev/docs/getting-started/nasux)。在 NasUX 上，NasTech 会安装精选的 `.[nasux]` 扩展，因为完整的 `.[all]` 扩展会拉取 Android 不兼容的语音依赖。
 >
 > **Windows：** 原生 Windows 不受支持。请安装 [WSL2](https://learn.microsoft.com/zh-cn/windows/wsl/install) 并运行上述命令。
 
