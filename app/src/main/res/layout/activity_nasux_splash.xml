@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/amoled_bg"
+    android:padding="40dp">
+
+    <!-- NasTech AI glow logo area -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <!-- NasUX ASCII-style logo banner -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="╔══════════════════╗"
+            android:textColor="@color/nastech_accent"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.0" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="║   NasUX Terminal  ║"
+            android:textColor="@color/nastech_accent"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="╚══════════════════╝"
+            android:textColor="@color/nastech_accent"
+            android:textSize="14sp"
+            android:fontFamily="monospace" />
+
+    </LinearLayout>
+
+    <!-- Powered by label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Powered by NasTech AI"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:fontFamily="monospace" />
+
+    <!-- Version / tagline -->
+    <TextView
+        android:id="@+id/splash_version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Full Linux · Full AI · Any Android"
+        android:textColor="@color/text_disabled"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <!-- Animated status line -->
+    <TextView
+        android:id="@+id/splash_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:text="Initializing…"
+        android:textColor="@color/nastech_accent"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+
+    <!-- Progress bar — NasTech teal -->
+    <ProgressBar
+        android:id="@+id/splash_progress"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="240dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="10dp"
+        android:indeterminate="true"
+        android:progressTint="@color/nastech_accent"
+        android:indeterminateTint="@color/nastech_accent" />
+
+    <!-- First-run setup button (hidden normally) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/splash_setup_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginTop="28dp"
+        android:text="→  Setup NasTech AI"
+        android:textColor="@color/amoled_bg"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:backgroundTint="@color/nastech_accent"
+        android:visibility="gone" />
+
+</LinearLayout>

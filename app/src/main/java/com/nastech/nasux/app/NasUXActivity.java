@@ -251,6 +251,8 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
 
         setToggleKeyboardView();
 
+        setNasTechButtonViews();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -594,7 +596,58 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
         });
     }
 
+    /**
+     * Wires up the NasTech AI quick-command sidebar buttons.
+     * Each button opens a new named terminal session and sends the appropriate command.
+     */
+    private void setNasTechButtonViews() {
+        final int[] buttonIds = {
+            R.id.nastech_btn_start_ai,
+            R.id.nastech_btn_chat,
+            R.id.nastech_btn_update,
+            R.id.nastech_btn_install_deps,
+            R.id.nastech_btn_setup
+        };
+        final String[] commands = {
+            "nastech\n",
+            "nastech\n",
+            "bash ~/nastech-agent/update.sh\n",
+            "bash ~/nastech-agent/setup-all.sh\n",
+            "bash ~/nastech-agent/install.sh\n"
+        };
+        final String[] sessionNames = {
+            "NasTech AI",
+            "NasTech AI",
+            "NasTech Update",
+            "NasTech Setup",
+            "NasTech Install"
+        };
 
+        for (int i = 0; i < buttonIds.length; i++) {
+            final String cmd = commands[i];
+            final String name = sessionNames[i];
+            View btn = findViewById(buttonIds[i]);
+            if (btn != null) {
+                btn.setOnClickListener(v -> runNasTechCommand(cmd, name));
+            }
+        }
+    }
+
+    /**
+     * Opens a new named terminal session and runs the given NasTech command in it.
+     * The drawer is closed first so the user sees the terminal immediately.
+     */
+    private void runNasTechCommand(final String command, final String sessionName) {
+        getDrawer().closeDrawers();
+        mNasUXTerminalSessionActivityClient.addNewSession(false, sessionName);
+        // Brief delay to allow the session PTY to initialize before writing
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            TerminalSession session = getCurrentSession();
+            if (session != null) {
+                session.write(command);
+            }
+        }, 350);
+    }
 
 
 

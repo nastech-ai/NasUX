@@ -400,6 +400,33 @@ final class NasUXInstaller {
 
             copyAssetDir(context, "nastech-agent", agentDestDir);
 
+            // Copy NasUX convenience scripts into the agent dir
+            String[] extraScripts = {"nasux-setup-all.sh", "nasux-update.sh"};
+            String[] scriptDests = {"setup-all.sh", "update.sh"};
+            for (int i = 0; i < extraScripts.length; i++) {
+                try (java.io.InputStream in = context.getAssets().open(extraScripts[i]);
+                     java.io.FileOutputStream out = new java.io.FileOutputStream(
+                             new File(agentDestDir, scriptDests[i]))) {
+                    byte[] buf = new byte[4096]; int len;
+                    while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
+                    new File(agentDestDir, scriptDests[i]).setExecutable(true, false);
+                } catch (Exception ignored) {}
+            }
+
+            // Copy default color scheme to ~/.nasux/colors.properties
+            try {
+                File nasuxConfigDir = new File(NasUXConstants.NASUX_HOME_DIR_PATH, ".nasux");
+                nasuxConfigDir.mkdirs();
+                File colorsFile = new File(nasuxConfigDir, "colors.properties");
+                if (!colorsFile.exists()) {
+                    try (java.io.InputStream in = context.getAssets().open("nasux-colors.properties");
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(colorsFile)) {
+                        byte[] buf = new byte[4096]; int len;
+                        while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
+                    }
+                }
+            } catch (Exception ignored) {}
+
             // Make key scripts executable
             File installScript = new File(agentDestDir, "install.sh");
             if (installScript.exists()) installScript.setExecutable(true, false);

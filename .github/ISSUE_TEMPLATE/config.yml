@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Want ask questions about the project?
-    url: https://github.com/termux/termux-app/discussions
+  - name: Want to ask questions about NasUX or NasTech AI?
+    url: https://github.com/nastech-ai/NasTech-Agent/discussions
     about: Join GitHub Discussions
+  - name: NasTech AI Agent issues
+    url: https://github.com/nastech-ai/NasTech-Agent/issues
+    about: Report issues with the NasTech AI Agent

@@ -1,23 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background_markdown_code_inline">#1F000000</color>
-    <color name="background_markdown_code_block">#0F000000</color>
+    <!-- NasUX UI Color System — Termius-Inspired Dark Navy + NasTech Teal -->
 
+    <!-- Core backgrounds (Termius dark navy palette) -->
     <color name="black">#FF000000</color>
+    <color name="amoled_bg">#FF0D1117</color>
+    <color name="terminal_bg">#FF0A0E1A</color>
+    <color name="surface_1">#FF141A27</color>
+    <color name="surface_2">#FF1C2333</color>
+    <color name="sidebar_bg">#FF0A0F1A</color>
+    <color name="card_bg">#FF141F35</color>
+    <color name="toolbar_bg">#FF161B22</color>
+    <color name="divider">#FF21262D</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="red_400">#FF0000</color>
-    <color name="red_800">#C4001D</color>
+    <!-- NasTech AI Brand Colors -->
+    <color name="nastech_accent">#FF00D4AA</color>
+    <color name="nastech_accent_dark">#FF00A882</color>
+    <color name="nastech_accent_dim">#2200D4AA</color>
+    <color name="nastech_blue">#FF4FC3F7</color>
+    <color name="nastech_blue_dim">#334FC3F7</color>
+    <color name="nastech_glow">#FF00FFCC</color>
+    <color name="nastech_amber">#FFFFA726</color>
+    <color name="nastech_amber_dim">#33FFA726</color>
 
-    <color name="grey_200">#EEEEEE</color>
-    <color name="grey_400">#BDBDBD</color>
-    <color name="grey_500">#9E9E9E</color>
-    <color name="grey_800">#424242</color>
-    <color name="grey_900">#212121</color>
+    <!-- Text Colors -->
+    <color name="text_primary">#FFE6EDF3</color>
+    <color name="text_secondary">#FF8B949E</color>
+    <color name="text_disabled">#FF484F58</color>
+    <color name="text_hint">#FF3D444D</color>
+    <color name="text_link">#FF58A6FF</color>
 
-    <color name="red_error">#DC143C</color>
-    <color name="red_error_link">#FC143C</color>
+    <!-- Terminal ANSI Colors (Termius-style palette) -->
+    <color name="terminal_green">#FF3FB950</color>
+    <color name="terminal_green_bright">#FF56D364</color>
+    <color name="terminal_yellow">#FFD29922</color>
+    <color name="terminal_yellow_bright">#FFE3B341</color>
+    <color name="terminal_red">#FFFF7B72</color>
+    <color name="terminal_red_bright">#FFFFA198</color>
+    <color name="terminal_cyan">#FF39C5CF</color>
+    <color name="terminal_cyan_dim">#FF2B9E9E</color>
+    <color name="terminal_blue">#FF79C0FF</color>
+    <color name="terminal_blue_bright">#FFA5D6FF</color>
+    <color name="terminal_magenta">#FFCE93D8</color>
+    <color name="terminal_magenta_bright">#FFED9EFD</color>
+    <color name="terminal_white">#FFB1BAC4</color>
+    <color name="terminal_black">#FF161B22</color>
+    <color name="terminal_orange">#FFFFA657</color>
 
-    <color name="blue_link_light">#0969DA</color>
-    <color name="blue_link_dark">#58A6FF</color>
+    <!-- Status / Semantic Colors -->
+    <color name="red_400">#FFFF7B72</color>
+    <color name="red_800">#FFCF222B</color>
+    <color name="red_error">#FFFF7B72</color>
+    <color name="red_error_link">#FFFFA198</color>
+    <color name="success_green">#FF3FB950</color>
+    <color name="warning_amber">#FFD29922</color>
+    <color name="active_indicator">#FF238636</color>
+
+    <!-- Greys (legacy compat) -->
+    <color name="grey_200">#FFEEEEEE</color>
+    <color name="grey_400">#FFB1BAC4</color>
+    <color name="grey_500">#FF8B949E</color>
+    <color name="grey_800">#FF3D444D</color>
+    <color name="grey_900">#FF21262D</color>
+
+    <!-- Links -->
+    <color name="blue_link_light">#FF58A6FF</color>
+    <color name="blue_link_dark">#FF79C0FF</color>
+
+    <!-- Markdown code -->
+    <color name="background_markdown_code_inline">#2200D4AA</color>
+    <color name="background_markdown_code_block">#1A00D4AA</color>
+
+    <!-- Extra keys bar (Termius-style) -->
+    <color name="extra_keys_bg">#FF161B22</color>
+    <color name="extra_keys_text">#FFB1BAC4</color>
+    <color name="extra_keys_active_text">#FF00D4AA</color>
+    <color name="extra_keys_active_bg">#FF21262D</color>
+
+    <!-- Session list -->
+    <color name="session_active_bg">#FF1C2333</color>
+    <color name="session_active_indicator">#FF00D4AA</color>
+    <color name="session_text">#FFE6EDF3</color>
+    <color name="session_exited_text">#FF8B949E</color>
 </resources>

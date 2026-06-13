@@ -1,17 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <style name="NasUXAlertDialogStyle" parent="@android:style/Theme.Material.Light.Dialog.Alert">
-        <!-- Seen in buttons on alert dialog: -->
-        <item name="android:colorAccent">#212121</item>
+    <style name="NasUXAlertDialogStyle" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:colorAccent">@color/nastech_accent</item>
+        <item name="android:background">@color/surface_1</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
+    <!-- Drawer button styles -->
     <style name="NasUXActivity.Drawer.ButtonBarStyle.Light" parent="@style/Widget.MaterialComponents.Button.TextButton">
-        <item name="android:textColor">@color/black</item>
+        <item name="android:textColor">@color/nastech_accent</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.05</item>
     </style>
 
     <style name="NasUXActivity.Drawer.ButtonBarStyle.Dark" parent="@style/Widget.MaterialComponents.Button.TextButton">
-        <item name="android:textColor">@color/white</item>
+        <item name="android:textColor">@color/nastech_accent</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.05</item>
     </style>
 
+    <!-- NasTech AI Quick Command buttons -->
+    <style name="NasTech.QuickCommand.Button" parent="@style/Widget.MaterialComponents.Button.TextButton">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:background">@drawable/nastech_button_bg</item>
+    </style>
+
+    <style name="NasTech.SectionHeader" parent="@android:style/Widget.TextView">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:textColor">@color/nastech_accent</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:letterSpacing">0.15</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
 </resources>

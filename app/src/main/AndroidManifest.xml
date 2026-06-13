@@ -49,6 +49,31 @@
         android:theme="@style/Theme.NasUXApp.DayNight.DarkActionBar"
         tools:targetApi="m">
 
+        <!-- Splash screen — always the first screen, handles first-run wizard routing -->
+        <activity
+            android:name=".app.NasUXSplashActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.NasUXActivity.DayNight.NoActionBar"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- First-run NasTech AI Setup Wizard -->
+        <activity
+            android:name=".app.NasUXSetupWizardActivity"
+            android:exported="false"
+            android:theme="@style/Theme.NasUXActivity.DayNight.NoActionBar"
+            android:launchMode="singleTop" />
+
+        <!-- Main terminal activity — launched from splash -->
         <activity
             android:name=".app.NasUXActivity"
             android:exported="true"
@@ -58,17 +83,6 @@
             android:resizeableActivity="true"
             android:theme="@style/Theme.NasUXActivity.DayNight.NoActionBar"
             tools:targetApi="n">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
-
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />

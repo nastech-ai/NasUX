@@ -5,16 +5,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:background="@color/terminal_bg">
 
     <RelativeLayout
         android:id="@+id/activity_nasux_root_relative_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginHorizontal="3dp"
+        android:layout_marginHorizontal="0dp"
         android:layout_marginVertical="0dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:background="@color/terminal_bg">
 
         <androidx.drawerlayout.widget.DrawerLayout
             android:id="@+id/drawer_layout"
@@ -23,6 +25,7 @@
             android:layout_above="@+id/terminal_toolbar_view_pager"
             android:layout_height="match_parent">
 
+            <!-- Terminal view — pure dark, Termius-style -->
             <com.nastech.nasux.view.TerminalView
                 android:id="@+id/terminal_view"
                 android:layout_width="match_parent"
@@ -31,75 +34,221 @@
                 android:focusableInTouchMode="true"
                 android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
                 android:scrollbars="vertical"
+                android:background="@color/terminal_bg"
                 tools:ignore="UnusedAttribute" />
 
+            <!-- Left Drawer — Termius-style dark navy sidebar -->
             <LinearLayout
                 android:id="@+id/left_drawer"
-                android:layout_width="240dp"
+                android:layout_width="260dp"
                 android:layout_height="match_parent"
                 android:layout_gravity="start"
-                android:choiceMode="singleChoice"
-                android:divider="@android:color/transparent"
-                android:dividerHeight="0dp"
-                android:descendantFocusability="blocksDescendants"
                 android:orientation="vertical"
-                android:background="?attr/nasuxActivityDrawerBackground">
+                android:background="@color/sidebar_bg">
 
+                <!-- Header bar -->
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_height="54dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="6dp"
+                    android:background="@color/toolbar_bg">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="NasUX"
+                        android:textColor="@color/nastech_accent"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.04"
+                        android:fontFamily="monospace" />
+
                     <ImageButton
                         android:id="@+id/settings_button"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:src="@drawable/ic_settings"
-                        android:background="@null"
+                        android:background="@drawable/nastech_button_bg"
                         android:contentDescription="@string/action_open_settings"
-                        app:tint="?attr/nasuxActivityDrawerImageTint" />
+                        app:tint="@color/text_secondary" />
                 </LinearLayout>
 
+                <!-- Divider -->
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="@color/divider" />
+
+                <!-- SESSIONS section header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SESSIONS"
+                    android:textColor="@color/text_disabled"
+                    android:textSize="9sp"
+                    android:letterSpacing="0.18"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="2dp"
+                    android:fontFamily="monospace" />
+
+                <!-- Terminal sessions list — constrained to max ~35% of height -->
                 <ListView
                     android:id="@+id/terminal_sessions_list"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_gravity="top"
                     android:layout_weight="1"
                     android:choiceMode="singleChoice"
-                    android:longClickable="true" />
+                    android:longClickable="true"
+                    android:divider="@color/divider"
+                    android:dividerHeight="0.5dp"
+                    android:background="@color/sidebar_bg" />
 
+                <!-- Divider -->
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="@color/divider" />
+
+                <!-- NASTECH AI section header -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="NASTECH AI"
+                    android:textColor="@color/nastech_accent"
+                    android:textSize="9sp"
+                    android:letterSpacing="0.18"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="2dp"
+                    android:fontFamily="monospace" />
+
+                <!-- NasTech AI quick command buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="4dp">
+
+                    <Button
+                        android:id="@+id/nastech_btn_start_ai"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="42dp"
+                        android:text="@string/nastech_btn_start_ai"
+                        android:textColor="@color/nastech_accent"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
+                    <Button
+                        android:id="@+id/nastech_btn_chat"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_chat"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
+                    <Button
+                        android:id="@+id/nastech_btn_update"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_update"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
+                    <Button
+                        android:id="@+id/nastech_btn_install_deps"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_install_deps"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
+                    <Button
+                        android:id="@+id/nastech_btn_setup"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_setup"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
+                </LinearLayout>
+
+                <!-- Divider -->
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="@color/divider" />
+
+                <!-- Bottom bar — Keyboard + New Session -->
                 <LinearLayout
                     style="?android:attr/buttonBarStyle"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_height="48dp"
+                    android:orientation="horizontal"
+                    android:background="@color/toolbar_bg">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/toggle_keyboard_button"
                         style="?android:attr/buttonBarButtonStyle"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:text="@string/action_toggle_soft_keyboard" />
+                        android:text="@string/action_toggle_soft_keyboard"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/new_session_button"
                         style="?android:attr/buttonBarButtonStyle"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:text="@string/action_new_session" />
+                        android:text="@string/action_new_session"
+                        android:textColor="@color/nastech_accent"
+                        android:textSize="12sp" />
                 </LinearLayout>
+
             </LinearLayout>
 
         </androidx.drawerlayout.widget.DrawerLayout>
 
+        <!-- Terminal toolbar (Termius-style extra keys row) -->
         <androidx.viewpager.widget.ViewPager
             android:id="@+id/terminal_toolbar_view_pager"
             android:visibility="gone"
             android:layout_width="match_parent"
-            android:layout_height="37.5dp"
-            android:background="@color/black"
+            android:layout_height="40dp"
+            android:background="@color/toolbar_bg"
             android:layout_alignParentBottom="true" />
 
     </RelativeLayout>

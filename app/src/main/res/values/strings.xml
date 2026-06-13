@@ -96,6 +96,25 @@
 
 
 
+    <!-- NasTech AI Quick Commands -->
+    <string name="nastech_section_header">NasTech AI</string>
+    <string name="nastech_btn_start_ai">▶  Start AI Agent</string>
+    <string name="nastech_btn_chat">💬  Chat with AI</string>
+    <string name="nastech_btn_update">⟳  Update NasTech</string>
+    <string name="nastech_btn_setup">⚙  Full Setup</string>
+    <string name="nastech_btn_install_deps">⬇  Install Dependencies</string>
+    <string name="nastech_btn_status">●  AI Status</string>
+    <string name="nastech_btn_logs">≡  View Logs</string>
+    <string name="nastech_btn_new_ai_session">+  New AI Session</string>
+    <string name="nastech_section_sessions">Terminal Sessions</string>
+    <string name="nastech_section_tools">Quick Tools</string>
+    <string name="nastech_starting">Starting NasTech AI…</string>
+    <string name="nastech_updating">Updating NasTech…</string>
+    <string name="nastech_setting_up">Running full setup…</string>
+    <string name="nastech_installing_deps">Installing dependencies…</string>
+
+
+
     <!-- NasUX Notifications -->
     <string name="notification_action_exit">Exit</string>
     <string name="notification_action_wake_lock">Acquire wakelock</string>
@@ -146,62 +165,51 @@
         <string name="nasux_debugging_preferences_title">Debugging</string>
         <string name="nasux_debugging_preferences_summary">Preferences for debugging</string>
 
-            <!-- Logging Category -->
             <string name="nasux_logging_header">Logging</string>
+            <string name="nasux_log_level_title">Log Level</string>
 
-                <!-- Log Level -->
-                <string name="nasux_log_level_title">Log Level</string>
+            <string name="nasux_terminal_view_key_logging_enabled_title">Terminal View Key Logging</string>
+            <string name="nasux_terminal_view_key_logging_enabled_off">Logs will not have entries for terminal view keys. (Default)</string>
+            <string name="nasux_terminal_view_key_logging_enabled_on">Logcat logs will have entries for terminal view keys.
+                These are very verbose and should be disabled under normal circumstances or will cause performance issues.</string>
 
-                <!-- Terminal View Key Logging -->
-                <string name="nasux_terminal_view_key_logging_enabled_title">Terminal View Key Logging</string>
-                <string name="nasux_terminal_view_key_logging_enabled_off">Logs will not have entries for terminal view keys. (Default)</string>
-                <string name="nasux_terminal_view_key_logging_enabled_on">Logcat logs will have entries for terminal view keys.
-                    These are very verbose and should be disabled under normal circumstances or will cause performance issues.</string>
+            <string name="nasux_plugin_error_notifications_enabled_title">Plugin Error Notifications</string>
+            <string name="nasux_plugin_error_notifications_enabled_off">Disable flashes and notifications for plugin errors.</string>
+            <string name="nasux_plugin_error_notifications_enabled_on">Show flashes and notifications for plugin errors. (Default)</string>
 
-                <!-- Plugin Error Notifications -->
-                <string name="nasux_plugin_error_notifications_enabled_title">Plugin Error Notifications</string>
-                <string name="nasux_plugin_error_notifications_enabled_off">Disable flashes and notifications for plugin errors.</string>
-                <string name="nasux_plugin_error_notifications_enabled_on">Show flashes and notifications for plugin errors. (Default)</string>
-
-                <!-- Crash Report Notifications -->
-                <string name="nasux_crash_report_notifications_enabled_title">Crash Report Notifications</string>
-                <string name="nasux_crash_report_notifications_enabled_off">Disable notifications for crash reports.</string>
-                <string name="nasux_crash_report_notifications_enabled_on">Show notifications for crash reports. (Default)</string>
+            <string name="nasux_crash_report_notifications_enabled_title">Crash Report Notifications</string>
+            <string name="nasux_crash_report_notifications_enabled_off">Disable notifications for crash reports.</string>
+            <string name="nasux_crash_report_notifications_enabled_on">Show notifications for crash reports. (Default)</string>
 
 
         <!-- Terminal IO Preferences -->
         <string name="nasux_terminal_io_preferences_title">Terminal I/O</string>
         <string name="nasux_terminal_io_preferences_summary">Preferences for terminal I/O</string>
 
-            <!-- Keyboard Category -->
             <string name="nasux_keyboard_header">Keyboard</string>
 
-                <!-- Soft Keyboard -->
-                <string name="nasux_soft_keyboard_enabled_title">Soft Keyboard Enabled</string>
-                <string name="nasux_soft_keyboard_enabled_off">Soft keyboard will be disabled.</string>
-                <string name="nasux_soft_keyboard_enabled_on">Soft keyboard will be enabled. (Default)</string>
+            <string name="nasux_soft_keyboard_enabled_title">Soft Keyboard Enabled</string>
+            <string name="nasux_soft_keyboard_enabled_off">Soft keyboard will be disabled.</string>
+            <string name="nasux_soft_keyboard_enabled_on">Soft keyboard will be enabled. (Default)</string>
 
-                <!-- Soft Keyboard Only If No Hardware-->
-                <string name="nasux_soft_keyboard_enabled_only_if_no_hardware_title">Soft Keyboard Only If No Hardware</string>
-                <string name="nasux_soft_keyboard_enabled_only_if_no_hardware_off">Soft keyboard will be enabled even if
-                    hardware keyboard is connected. (Default)</string>
-                <string name="nasux_soft_keyboard_enabled_only_if_no_hardware_on">Soft keyboard will be enabled only if
-                    no hardware keyboard is connected.</string>
+            <string name="nasux_soft_keyboard_enabled_only_if_no_hardware_title">Soft Keyboard Only If No Hardware</string>
+            <string name="nasux_soft_keyboard_enabled_only_if_no_hardware_off">Soft keyboard will be enabled even if
+                hardware keyboard is connected. (Default)</string>
+            <string name="nasux_soft_keyboard_enabled_only_if_no_hardware_on">Soft keyboard will be enabled only if
+                no hardware keyboard is connected.</string>
 
 
         <!-- Terminal View Preferences -->
         <string name="nasux_terminal_view_preferences_title">Terminal View</string>
         <string name="nasux_terminal_view_preferences_summary">Preferences for terminal view</string>
 
-            <!-- View Category -->
             <string name="nasux_terminal_view_view_header">View</string>
 
-                <!-- Terminal View Margin Adjustment -->
-                <string name="nasux_terminal_view_terminal_margin_adjustment_title">Terminal Margin Adjustment</string>
-                <string name="nasux_terminal_view_terminal_margin_adjustment_off">Terminal margin adjustment will be disabled.</string>
-                <string name="nasux_terminal_view_terminal_margin_adjustment_on">Terminal margin adjustment will be enabled.
-                    It should be enabled to try to fix the issue where soft keyboard covers part of extra keys/terminal view.
-                    If it causes screen flickering on your devices, then disable it. (Default)</string>
+            <string name="nasux_terminal_view_terminal_margin_adjustment_title">Terminal Margin Adjustment</string>
+            <string name="nasux_terminal_view_terminal_margin_adjustment_off">Terminal margin adjustment will be disabled.</string>
+            <string name="nasux_terminal_view_terminal_margin_adjustment_on">Terminal margin adjustment will be enabled.
+                It should be enabled to try to fix the issue where soft keyboard covers part of extra keys/terminal view.
+                If it causes screen flickering on your devices, then disable it. (Default)</string>
 
 
 
@@ -209,25 +217,17 @@
     <string name="nasux_api_preferences_title">&NASUX_API_APP_NAME;</string>
     <string name="nasux_api_preferences_summary">Preferences for &NASUX_API_APP_NAME; app</string>
 
-
-
     <!-- NasUX:Float App Preferences -->
     <string name="nasux_float_preferences_title">&NASUX_FLOAT_APP_NAME;</string>
     <string name="nasux_float_preferences_summary">Preferences for &NASUX_FLOAT_APP_NAME; app</string>
-
-
 
     <!-- NasUX:Tasker App Preferences -->
     <string name="nasux_tasker_preferences_title">&NASUX_TASKER_APP_NAME;</string>
     <string name="nasux_tasker_preferences_summary">Preferences for &NASUX_TASKER_APP_NAME; app</string>
 
-
-
     <!-- NasUX:Widget App Preferences -->
     <string name="nasux_widget_preferences_title">&NASUX_WIDGET_APP_NAME;</string>
     <string name="nasux_widget_preferences_summary">Preferences for &NASUX_WIDGET_APP_NAME; app</string>
-
-
 
     <!-- About Preference -->
     <string name="about_preference_title">About</string>

@@ -1,5 +1,5 @@
 name: "Feature request"
-description: "Suggest a new feature for Termux application"
+description: "Suggest a new feature for NasUX application"
 title: "[Feature]: "
 labels: ["feature request"]
 body:
