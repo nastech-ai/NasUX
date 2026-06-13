@@ -1,0 +1,164 @@
+name: NasTech Issue Bot
+
+on:
+  workflow_run:
+    workflows:
+      - "Build NasUX"
+      - "Unit tests"
+      - "NasTech Brand Enforcement"
+      - "Validate Gradle Wrapper"
+      - "Android Lint & Code Health"
+      - "CodeQL Security Analysis"
+      - "NasUX Auto-Publish"
+      - "NasTech Auto-Fix Bot"
+      - "Dependency Vulnerability Audit"
+    types: [completed]
+    branches: [master, main]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  issues: write
+  contents: read
+  actions: read
+
+jobs:
+  issue-bot:
+    name: Issue Bot — ${{ github.event.workflow_run.name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Handle workflow result
+        shell: bash
+        env:
+          GH_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
+          WF_NAME:        ${{ github.event.workflow_run.name }}
+          WF_CONCLUSION:  ${{ github.event.workflow_run.conclusion }}
+          WF_HTML_URL:    ${{ github.event.workflow_run.html_url }}
+          WF_RUN_ID:      ${{ github.event.workflow_run.id }}
+          WF_HEAD_SHA:    ${{ github.event.workflow_run.head_sha }}
+          WF_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          REPO:           ${{ github.repository }}
+        run: |
+          SHORT_SHA="${WF_HEAD_SHA:0:7}"
+          LABEL="ci-failure"
+          ISSUE_TITLE="[CI Failure] ${WF_NAME}"
+
+          echo "Workflow: ${WF_NAME}"
+          echo "Conclusion: ${WF_CONCLUSION}"
+          echo "SHA: ${SHORT_SHA}"
+
+          # ── Ensure the ci-failure label exists ───────────────────────────────
+          gh label create "${LABEL}" \
+            --description "Automated CI failure tracked by NasTech Issue Bot" \
+            --color "d73a4a" \
+            --repo "${REPO}" 2>/dev/null || true
+
+          gh label create "ci-fixed" \
+            --description "CI issue resolved and auto-closed" \
+            --color "0e8a16" \
+            --repo "${REPO}" 2>/dev/null || true
+
+          gh label create "auto-bot" \
+            --description "Created or managed by NasTech Issue Bot" \
+            --color "e4e669" \
+            --repo "${REPO}" 2>/dev/null || true
+
+          # ── Find any open issue for this workflow ────────────────────────────
+          EXISTING_ISSUE=$(gh issue list \
+            --repo "${REPO}" \
+            --state open \
+            --label "${LABEL}" \
+            --json number,title \
+            --jq ".[] | select(.title == \"${ISSUE_TITLE}\") | .number" \
+            | head -1 || echo "")
+
+          if [ "${WF_CONCLUSION}" = "failure" ]; then
+            # ── BUILD FAILED ─────────────────────────────────────────────────
+
+            # Get the failed jobs for context
+            FAILED_JOBS=$(gh api \
+              "repos/${REPO}/actions/runs/${WF_RUN_ID}/jobs" \
+              --jq '.jobs[] | select(.conclusion=="failure") | "- **\(.name)** → failed step: \(.steps[]? | select(.conclusion=="failure") | .name)"' \
+              2>/dev/null | head -10 || echo "- (could not retrieve job details)")
+
+            BODY="## ❌ CI Failure Detected
+
+**Workflow:** \`${WF_NAME}\`
+**Branch:** \`${WF_HEAD_BRANCH}\`
+**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
+**Run:** [View run logs](${WF_HTML_URL})
+**Time:** $(date -u +"%Y-%m-%d %H:%M UTC")
+
+### Failed Jobs
+${FAILED_JOBS}
+
+### How to fix
+1. Click **View run logs** above to see the full error output
+2. Fix the issue in your code
+3. Push to master — this issue will auto-close when the workflow passes again
+
+---
+*Opened automatically by NasTech Issue Bot*"
+
+            if [ -n "${EXISTING_ISSUE}" ]; then
+              # Add a comment to the existing open issue
+              echo "Adding failure comment to existing issue #${EXISTING_ISSUE}"
+              gh issue comment "${EXISTING_ISSUE}" \
+                --repo "${REPO}" \
+                --body "## 🔴 Still Failing ($(date -u +"%Y-%m-%d %H:%M UTC"))
+
+**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
+**Run:** [View run logs](${WF_HTML_URL})
+
+${FAILED_JOBS}
+
+*Updated by NasTech Issue Bot*"
+            else
+              # Open a new issue
+              echo "Opening new failure issue: ${ISSUE_TITLE}"
+              NEW_ISSUE=$(gh issue create \
+                --repo "${REPO}" \
+                --title "${ISSUE_TITLE}" \
+                --body "${BODY}" \
+                --label "${LABEL}" \
+                --label "auto-bot")
+              echo "Created issue: ${NEW_ISSUE}"
+            fi
+
+          elif [ "${WF_CONCLUSION}" = "success" ]; then
+            # ── BUILD PASSED — close any open failure issue ───────────────────
+
+            if [ -n "${EXISTING_ISSUE}" ]; then
+              echo "Closing resolved issue #${EXISTING_ISSUE}"
+              gh issue comment "${EXISTING_ISSUE}" \
+                --repo "${REPO}" \
+                --body "## ✅ Fixed! ($(date -u +"%Y-%m-%d %H:%M UTC"))
+
+**Workflow:** \`${WF_NAME}\` is now passing.
+**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
+**Run:** [View passing run](${WF_HTML_URL})
+
+Auto-closing this issue.
+
+*Resolved by NasTech Issue Bot*"
+
+              gh issue close "${EXISTING_ISSUE}" \
+                --repo "${REPO}" \
+                --reason "completed" || true
+
+              gh issue edit "${EXISTING_ISSUE}" \
+                --repo "${REPO}" \
+                --add-label "ci-fixed" \
+                --remove-label "${LABEL}" || true
+
+              echo "✅ Issue #${EXISTING_ISSUE} closed."
+            else
+              echo "✅ No open failure issue for '${WF_NAME}' — nothing to close."
+            fi
+
+          else
+            echo "Conclusion '${WF_CONCLUSION}' — no action needed."
+          fi

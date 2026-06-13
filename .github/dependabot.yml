@@ -1,9 +1,64 @@
 version: 2
 updates:
-- package-ecosystem: github-actions
-  directory: /
-  schedule:
-    interval: daily
-  commit-message:
-    # Prefix all commit messages with "Changed: "
-    prefix: "Changed"
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "ci(deps)"
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      actions-minor:
+        update-types:
+          - minor
+          - patch
+
+  # ── Gradle (Android) dependencies ─────────────────────────────────────────────
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+      - android
+    open-pull-requests-limit: 10
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+        update-types:
+          - minor
+          - patch
+      material:
+        patterns:
+          - "com.google.android.material*"
+        update-types:
+          - minor
+          - patch
+
+  # ── Python (NasTech Agent) ───────────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /app/src/main/assets
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "chore(agent-deps)"
+    labels:
+      - dependencies
+      - nastech-agent
+    open-pull-requests-limit: 5
