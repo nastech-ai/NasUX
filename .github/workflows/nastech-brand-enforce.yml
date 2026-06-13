@@ -72,7 +72,7 @@ jobs:
               | grep -v "packages-cf\.termux\.dev" \
               | grep -v "packages\.termux\.dev" \
               | grep -v "termux-main" \
-              | grep -v "BRANDING\.md\|/BRANDING\.md" \
+              | grep -v "BRANDING\.md" \
               || true)
 
           if [ -n "$FOUND" ]; then
