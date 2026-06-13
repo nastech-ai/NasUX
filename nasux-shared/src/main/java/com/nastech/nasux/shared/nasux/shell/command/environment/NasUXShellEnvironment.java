@@ -86,9 +86,11 @@ public class NasUXShellEnvironment extends AndroidShellEnvironment {
                 environment.put(ENV_PATH, NasUXConstants.NASUX_BIN_PREFIX_DIR_PATH + ":" + NasUXConstants.NASUX_BIN_PREFIX_DIR_PATH + "/applets");
                 environment.put(ENV_LD_LIBRARY_PATH, NasUXConstants.NASUX_LIB_PREFIX_DIR_PATH);
             } else {
-                // NasUX binaries on Android 7+ rely on DT_RUNPATH, so LD_LIBRARY_PATH should be unset by default
+                // NasUX bootstrap ZIPs are patched from the upstream source which used a different
+                // package path. LD_LIBRARY_PATH ensures the dynamic linker finds libs at the
+                // NasUX path regardless of any embedded DT_RUNPATH in individual ELF binaries.
                 environment.put(ENV_PATH, NasUXConstants.NASUX_BIN_PREFIX_DIR_PATH);
-                environment.remove(ENV_LD_LIBRARY_PATH);
+                environment.put(ENV_LD_LIBRARY_PATH, NasUXConstants.NASUX_LIB_PREFIX_DIR_PATH);
             }
         }
 
