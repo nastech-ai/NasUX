@@ -106,6 +106,15 @@
     <string name="nastech_btn_status">●  AI Status</string>
     <string name="nastech_btn_logs">≡  View Logs</string>
     <string name="nastech_btn_new_ai_session">+  New AI Session</string>
+    <string name="nastech_btn_theme">🎨  Customize Theme</string>
+    <string name="nastech_theme_settings">Theme &amp; Colors</string>
+    <string name="nastech_theme_bg">Terminal Background</string>
+    <string name="nastech_theme_preview">Preview</string>
+    <string name="nastech_theme_highlights">Highlight Colors</string>
+    <string name="nastech_theme_upload_wallpaper">📷  Upload My Wallpaper</string>
+    <string name="nastech_theme_save">Save Theme  →</string>
+    <string name="nastech_theme_reset">Reset to NasTech Defaults</string>
+    <string name="nastech_theme_system_note">Highlight colors are managed by NasTech AI</string>
     <string name="nastech_section_sessions">Terminal Sessions</string>
     <string name="nastech_section_tools">Quick Tools</string>
     <string name="nastech_starting">Starting NasTech AI…</string>

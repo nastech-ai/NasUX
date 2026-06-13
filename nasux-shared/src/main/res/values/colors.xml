@@ -2,16 +2,16 @@
 <resources>
     <!-- NasUX UI Color System — Termius-Inspired Dark Navy + NasTech Teal -->
 
-    <!-- Core backgrounds (Termius dark navy palette) -->
+    <!-- Core backgrounds — true AMOLED black + NasTech dark chrome -->
     <color name="black">#FF000000</color>
-    <color name="amoled_bg">#FF0D1117</color>
-    <color name="terminal_bg">#FF0A0E1A</color>
-    <color name="surface_1">#FF141A27</color>
-    <color name="surface_2">#FF1C2333</color>
-    <color name="sidebar_bg">#FF0A0F1A</color>
-    <color name="card_bg">#FF141F35</color>
-    <color name="toolbar_bg">#FF161B22</color>
-    <color name="divider">#FF21262D</color>
+    <color name="amoled_bg">#FF000000</color>
+    <color name="terminal_bg">#FF000000</color>
+    <color name="surface_1">#FF0D0D0D</color>
+    <color name="surface_2">#FF1A1A1A</color>
+    <color name="sidebar_bg">#FF080808</color>
+    <color name="card_bg">#FF111111</color>
+    <color name="toolbar_bg">#FF111111</color>
+    <color name="divider">#FF2A2A2A</color>
     <color name="white">#FFFFFFFF</color>
 
     <!-- NasTech AI Brand Colors -->
@@ -31,22 +31,22 @@
     <color name="text_hint">#FF3D444D</color>
     <color name="text_link">#FF58A6FF</color>
 
-    <!-- Terminal ANSI Colors (Termius-style palette) -->
-    <color name="terminal_green">#FF3FB950</color>
-    <color name="terminal_green_bright">#FF56D364</color>
-    <color name="terminal_yellow">#FFD29922</color>
-    <color name="terminal_yellow_bright">#FFE3B341</color>
-    <color name="terminal_red">#FFFF7B72</color>
-    <color name="terminal_red_bright">#FFFFA198</color>
-    <color name="terminal_cyan">#FF39C5CF</color>
-    <color name="terminal_cyan_dim">#FF2B9E9E</color>
-    <color name="terminal_blue">#FF79C0FF</color>
-    <color name="terminal_blue_bright">#FFA5D6FF</color>
-    <color name="terminal_magenta">#FFCE93D8</color>
-    <color name="terminal_magenta_bright">#FFED9EFD</color>
-    <color name="terminal_white">#FFB1BAC4</color>
-    <color name="terminal_black">#FF161B22</color>
-    <color name="terminal_orange">#FFFFA657</color>
+    <!-- Terminal ANSI Colors — NasTech Super-Vivid AMOLED palette -->
+    <color name="terminal_green">#FF00D4AA</color>
+    <color name="terminal_green_bright">#FF4DFFD4</color>
+    <color name="terminal_yellow">#FFFFD700</color>
+    <color name="terminal_yellow_bright">#FFFFFF4D</color>
+    <color name="terminal_red">#FFFF3333</color>
+    <color name="terminal_red_bright">#FFFF6E6E</color>
+    <color name="terminal_cyan">#FF00FFDD</color>
+    <color name="terminal_cyan_dim">#FF00BBA0</color>
+    <color name="terminal_blue">#FF3DC3FF</color>
+    <color name="terminal_blue_bright">#FF80DAFF</color>
+    <color name="terminal_magenta">#FFFF00FF</color>
+    <color name="terminal_magenta_bright">#FFFF80FF</color>
+    <color name="terminal_white">#FFD0D8E0</color>
+    <color name="terminal_black">#FF1C1C1C</color>
+    <color name="terminal_orange">#FFFFA333</color>
 
     <!-- Status / Semantic Colors -->
     <color name="red_400">#FFFF7B72</color>

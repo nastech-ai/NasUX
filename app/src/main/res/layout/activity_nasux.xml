@@ -203,6 +203,20 @@
                         android:background="@drawable/nastech_button_bg"
                         android:fontFamily="monospace" />
 
+                    <Button
+                        android:id="@+id/nastech_btn_theme"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:text="@string/nastech_btn_theme"
+                        android:textColor="@color/nastech_accent"
+                        android:textSize="12.5sp"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/nastech_button_bg"
+                        android:fontFamily="monospace" />
+
                 </LinearLayout>
 
                 <!-- Divider -->

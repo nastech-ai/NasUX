@@ -322,6 +322,19 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
         NasUXCrashUtils.notifyAppCrashFromCrashLogFile(this, LOG_TAG);
 
         mIsOnResumeAfterOnCreate = false;
+
+        // Apply user-selected theme background every resume (catches theme changes)
+        applyNasUXTheme();
+    }
+
+    /** Applies the user's saved theme (background color or wallpaper) to the terminal view. */
+    private void applyNasUXTheme() {
+        try {
+            View termView = findViewById(R.id.terminal_view);
+            if (termView != null) {
+                NasUXThemeManager.applyBackground(this, termView);
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override
@@ -631,6 +644,16 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
                 btn.setOnClickListener(v -> runNasTechCommand(cmd, name));
             }
         }
+
+        // Theme customisation button
+        View themeBtn = findViewById(R.id.nastech_btn_theme);
+        if (themeBtn != null) {
+            themeBtn.setOnClickListener(v -> {
+                getDrawer().closeDrawers();
+                NasUXThemeManager.logNasTechEvent(this, "theme_settings_opened", "user");
+                startActivity(new android.content.Intent(this, NasUXThemeSettingsActivity.class));
+            });
+        }
     }
 
     /**
@@ -644,7 +667,8 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             TerminalSession session = getCurrentSession();
             if (session != null) {
-                session.write(command);
+                byte[] cmdBytes = command.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                session.write(cmdBytes, 0, cmdBytes.length);
             }
         }, 350);
     }

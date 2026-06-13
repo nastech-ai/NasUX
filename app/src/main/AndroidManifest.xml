@@ -73,6 +73,13 @@
             android:theme="@style/Theme.NasUXActivity.DayNight.NoActionBar"
             android:launchMode="singleTop" />
 
+        <!-- Theme & Colors Settings -->
+        <activity
+            android:name=".app.NasUXThemeSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.NasUXActivity.DayNight.NoActionBar"
+            android:launchMode="singleTop" />
+
         <!-- Main terminal activity — launched from splash -->
         <activity
             android:name=".app.NasUXActivity"
