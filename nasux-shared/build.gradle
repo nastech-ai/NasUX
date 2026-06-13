@@ -28,7 +28,7 @@ android {
 
         implementation project(":terminal-view")
 
-        implementation "com.nastech.nasux:nasux-am-library:v2.0.0"
+        implementation project(":nasux-am-library")
     }
 
     defaultConfig {

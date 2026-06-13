@@ -1,1 +1,1 @@
-include ':app', ':nasux-shared', ':terminal-emulator', ':terminal-view'
+include ':app', ':nasux-shared', ':nasux-am-library', ':terminal-emulator', ':terminal-view'
