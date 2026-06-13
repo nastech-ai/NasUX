@@ -101,37 +101,42 @@ jobs:
             [ -z "${FAILED_JOBS}" ] && FAILED_JOBS="- (see run logs for details)"
 
             NOW=$(date -u +"%Y-%m-%d %H:%M UTC")
-            BODY="## ❌ CI Failure Detected
-
-**Workflow:** \`${WF_NAME}\`
-**Branch:**   \`${WF_HEAD_BRANCH}\`
-**Commit:**   [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
-**Run:**      [View run logs](${WF_HTML_URL})
-**Time:**     ${NOW}
-
-### Failed Jobs
-${FAILED_JOBS}
-
-### How to fix
-1. Click **View run logs** above to see the full error
-2. Fix the problem in your code and push to master
-3. This issue closes automatically when the workflow passes again
-
----
-*Opened automatically by NasTech Issue Bot*"
+            _BODY_F=$(mktemp)
+            echo "## ❌ CI Failure Detected"                                                          >> "${_BODY_F}"
+            echo ""                                                                                   >> "${_BODY_F}"
+            echo "**Workflow:** \`${WF_NAME}\`"                                                       >> "${_BODY_F}"
+            echo "**Branch:**   \`${WF_HEAD_BRANCH}\`"                                                >> "${_BODY_F}"
+            echo "**Commit:**   [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})" >> "${_BODY_F}"
+            echo "**Run:**      [View run logs](${WF_HTML_URL})"                                      >> "${_BODY_F}"
+            echo "**Time:**     ${NOW}"                                                               >> "${_BODY_F}"
+            echo ""                                                                                   >> "${_BODY_F}"
+            echo "### Failed Jobs"                                                                    >> "${_BODY_F}"
+            echo "${FAILED_JOBS}"                                                                     >> "${_BODY_F}"
+            echo ""                                                                                   >> "${_BODY_F}"
+            echo "### How to fix"                                                                     >> "${_BODY_F}"
+            echo "1. Click **View run logs** above to see the full error"                             >> "${_BODY_F}"
+            echo "2. Fix the problem in your code and push to master"                                 >> "${_BODY_F}"
+            echo "3. This issue closes automatically when the workflow passes again"                  >> "${_BODY_F}"
+            echo ""                                                                                   >> "${_BODY_F}"
+            echo "---"                                                                                >> "${_BODY_F}"
+            echo "*Opened automatically by NasTech Issue Bot*"                                       >> "${_BODY_F}"
+            BODY=$(cat "${_BODY_F}"); rm -f "${_BODY_F}"
 
             if [ -n "${EXISTING_ISSUE}" ]; then
               echo "Commenting on existing issue #${EXISTING_ISSUE}"
+              _CMT_F=$(mktemp)
+              echo "## 🔴 Still Failing ($(date -u +"%Y-%m-%d %H:%M UTC"))"               >> "${_CMT_F}"
+              echo ""                                                                       >> "${_CMT_F}"
+              echo "**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})" >> "${_CMT_F}"
+              echo "**Run:** [View run logs](${WF_HTML_URL})"                              >> "${_CMT_F}"
+              echo ""                                                                       >> "${_CMT_F}"
+              echo "${FAILED_JOBS}"                                                         >> "${_CMT_F}"
+              echo ""                                                                       >> "${_CMT_F}"
+              echo "*Updated by NasTech Issue Bot*"                                        >> "${_CMT_F}"
               gh issue comment "${EXISTING_ISSUE}" \
                 --repo "${REPO}" \
-                --body "## 🔴 Still Failing ($(date -u +"%Y-%m-%d %H:%M UTC"))
-
-**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
-**Run:** [View run logs](${WF_HTML_URL})
-
-${FAILED_JOBS}
-
-*Updated by NasTech Issue Bot*" 2>/dev/null || echo "⚠️ Could not comment on issue"
+                --body "$(cat "${_CMT_F}")" 2>/dev/null || echo "⚠️ Could not comment on issue"
+              rm -f "${_CMT_F}"
             else
               echo "Opening new issue: ${ISSUE_TITLE}"
               NEW_ISSUE=$(gh issue create \
@@ -153,17 +158,20 @@ ${FAILED_JOBS}
             if [ -n "${EXISTING_ISSUE}" ]; then
               echo "Closing resolved issue #${EXISTING_ISSUE}"
 
+              _FIX_F=$(mktemp)
+              echo "## ✅ Fixed! ($(date -u +"%Y-%m-%d %H:%M UTC"))"                      >> "${_FIX_F}"
+              echo ""                                                                       >> "${_FIX_F}"
+              echo "\`${WF_NAME}\` is now passing."                                        >> "${_FIX_F}"
+              echo "**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})" >> "${_FIX_F}"
+              echo "**Run:** [View passing run](${WF_HTML_URL})"                           >> "${_FIX_F}"
+              echo ""                                                                       >> "${_FIX_F}"
+              echo "Auto-closing this issue."                                               >> "${_FIX_F}"
+              echo ""                                                                       >> "${_FIX_F}"
+              echo "*Resolved by NasTech Issue Bot*"                                       >> "${_FIX_F}"
               gh issue comment "${EXISTING_ISSUE}" \
                 --repo "${REPO}" \
-                --body "## ✅ Fixed! ($(date -u +"%Y-%m-%d %H:%M UTC"))
-
-\`${WF_NAME}\` is now passing.
-**Commit:** [\`${SHORT_SHA}\`](https://github.com/${REPO}/commit/${WF_HEAD_SHA})
-**Run:** [View passing run](${WF_HTML_URL})
-
-Auto-closing this issue.
-
-*Resolved by NasTech Issue Bot*" 2>/dev/null || true
+                --body "$(cat "${_FIX_F}")" 2>/dev/null || true
+              rm -f "${_FIX_F}"
 
               gh issue close "${EXISTING_ISSUE}" \
                 --repo "${REPO}" --reason "completed" 2>/dev/null || true

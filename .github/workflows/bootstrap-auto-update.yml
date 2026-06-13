@@ -112,64 +112,37 @@ jobs:
           CHECKSUM_I686:     ${{ steps.download.outputs.CHECKSUM_I686 }}
           CHECKSUM_X86_64:   ${{ steps.download.outputs.CHECKSUM_X86_64 }}
         run: |
-          python3 << 'PYEOF'
-import os, re
+          # Update the version comment line
+          sed -i -E \
+            "s|// bootstrap-[0-9.]+-r[0-9]+\+apt\.android-7.*|// bootstrap-${LATEST_VERSION}+apt.android-7 (latest; checksums verified at build time)|" \
+            app/build.gradle
 
-v     = os.environ["LATEST_VERSION"]
-cs    = {
-    "aarch64": os.environ["CHECKSUM_AARCH64"],
-    "arm":     os.environ["CHECKSUM_ARM"],
-    "i686":    os.environ["CHECKSUM_I686"],
-    "x86_64":  os.environ["CHECKSUM_X86_64"],
-}
+          # Update the version string:  def version = "OLD" + "%2B" + "apt.android-7"
+          sed -i -E \
+            "s|def version = \"[0-9.]+-r[0-9]+\" \\+ \"%2B\" \\+ \"apt\\.android-7\"|def version = \"${LATEST_VERSION}\" + \"%2B\" + \"apt.android-7\"|" \
+            app/build.gradle
 
-with open("app/build.gradle", "r") as f:
-    src = f.read()
+          # Update all four bootstrap checksums (64-char hex strings)
+          sed -i -E \
+            "s|(downloadBootstrap\\(\"aarch64\",[[:space:]]*\")([0-9a-f]{64})(\")|\\1${CHECKSUM_AARCH64}\\3|" \
+            app/build.gradle
+          sed -i -E \
+            "s|(downloadBootstrap\\(\"arm\",[[:space:]]*\")([0-9a-f]{64})(\")|\\1${CHECKSUM_ARM}\\3|" \
+            app/build.gradle
+          sed -i -E \
+            "s|(downloadBootstrap\\(\"i686\",[[:space:]]*\")([0-9a-f]{64})(\")|\\1${CHECKSUM_I686}\\3|" \
+            app/build.gradle
+          sed -i -E \
+            "s|(downloadBootstrap\\(\"x86_64\",[[:space:]]*\")([0-9a-f]{64})(\")|\\1${CHECKSUM_X86_64}\\3|" \
+            app/build.gradle
 
-# Update the comment line  (// bootstrap-XXXX+apt.android-7 ...)
-src = re.sub(
-    r'// bootstrap-[\d.]+-r\d+\+apt\.android-7[^\n]*',
-    f'// bootstrap-{v}+apt.android-7 (latest; checksums verified at build time)',
-    src
-)
-
-# Update the version string for apt-android-7 and apt-android-5 blocks
-# Matches:  def version = "2026.06.07-r1" + "%2B" + "apt.android-7"
-src = re.sub(
-    r'def version = "[\d.]+-r\d+" \+ "%2B" \+ "apt\.android-7"',
-    f'def version = "{v}" + "%2B" + "apt.android-7"',
-    src
-)
-
-# Update all four downloadBootstrap checksums (both variants now use same bootstrap)
-src = re.sub(
-    r'(downloadBootstrap\("aarch64",\s*)"[0-9a-f]{64}"',
-    r'\1"' + cs["aarch64"] + '"',
-    src
-)
-src = re.sub(
-    r'(downloadBootstrap\("arm",\s*)"[0-9a-f]{64}"',
-    r'\1"' + cs["arm"] + '"',
-    src
-)
-src = re.sub(
-    r'(downloadBootstrap\("i686",\s*)"[0-9a-f]{64}"',
-    r'\1"' + cs["i686"] + '"',
-    src
-)
-src = re.sub(
-    r'(downloadBootstrap\("x86_64",\s*)"[0-9a-f]{64}"',
-    r'\1"' + cs["x86_64"] + '"',
-    src
-)
-
-with open("app/build.gradle", "w") as f:
-    f.write(src)
-
-print(f"✅ build.gradle updated to bootstrap {v}")
-for arch, checksum in cs.items():
-    print(f"  {arch}: {checksum}")
-PYEOF
+          # Verify substitutions landed
+          if grep -q "\"${LATEST_VERSION}\"" app/build.gradle \
+            && grep -q "${CHECKSUM_AARCH64}" app/build.gradle; then
+            echo "✅ build.gradle updated to bootstrap ${LATEST_VERSION}"
+          else
+            echo "❌ Verification failed — sed substitutions did not apply" && exit 1
+          fi
 
       - name: Show diff
         if: steps.detect.outputs.UPDATE_NEEDED == 'true'
@@ -194,16 +167,21 @@ PYEOF
           git config user.email "nastech-bot@users.noreply.github.com"
           git checkout -B "${BRANCH}"
           git add app/build.gradle
-          git commit -m "chore(bootstrap): update to ${LATEST_VERSION}
 
-Bootstrap: ${CURRENT_VERSION} → ${LATEST_VERSION}
-Source tag: ${LATEST_TAG}
-
-SHA-256 checksums (verified):
-  aarch64: ${CHECKSUM_AARCH64}
-  arm:     ${CHECKSUM_ARM}
-  i686:    ${CHECKSUM_I686}
-  x86_64:  ${CHECKSUM_X86_64}"
+          # Build commit message via temp file (avoids column-0 content in YAML block scalar)
+          _COMMIT_MSG_F=$(mktemp)
+          echo "chore(bootstrap): update to ${LATEST_VERSION}"                   >> "${_COMMIT_MSG_F}"
+          echo ""                                                                 >> "${_COMMIT_MSG_F}"
+          echo "Bootstrap: ${CURRENT_VERSION} → ${LATEST_VERSION}"               >> "${_COMMIT_MSG_F}"
+          echo "Source tag: ${LATEST_TAG}"                                        >> "${_COMMIT_MSG_F}"
+          echo ""                                                                 >> "${_COMMIT_MSG_F}"
+          echo "SHA-256 checksums (verified):"                                   >> "${_COMMIT_MSG_F}"
+          echo "  aarch64: ${CHECKSUM_AARCH64}"                                  >> "${_COMMIT_MSG_F}"
+          echo "  arm:     ${CHECKSUM_ARM}"                                       >> "${_COMMIT_MSG_F}"
+          echo "  i686:    ${CHECKSUM_I686}"                                      >> "${_COMMIT_MSG_F}"
+          echo "  x86_64:  ${CHECKSUM_X86_64}"                                   >> "${_COMMIT_MSG_F}"
+          git commit -F "${_COMMIT_MSG_F}"
+          rm -f "${_COMMIT_MSG_F}"
 
           git push --force origin "${BRANCH}"
 
@@ -211,33 +189,38 @@ SHA-256 checksums (verified):
           gh pr list --head "${BRANCH}" --json number --jq '.[].number' \
             | xargs -r -I{} gh pr close {} --comment "Superseded by new push." 2>/dev/null || true
 
+          # Build PR body via temp file
+          _PR_BODY_F=$(mktemp)
+          echo "## 🔄 Bootstrap Auto-Update"                                                                                            >> "${_PR_BODY_F}"
+          echo ""                                                                                                                        >> "${_PR_BODY_F}"
+          echo "| | |"                                                                                                                   >> "${_PR_BODY_F}"
+          echo "|---|---|"                                                                                                               >> "${_PR_BODY_F}"
+          echo "| **Previous version** | \`${CURRENT_VERSION}\` |"                                                                      >> "${_PR_BODY_F}"
+          echo "| **New version**      | \`${LATEST_VERSION}\` |"                                                                       >> "${_PR_BODY_F}"
+          echo "| **Source tag**       | [\`${LATEST_TAG}\`](https://github.com/termux/termux-packages/releases/tag/${LATEST_TAG}) |"   >> "${_PR_BODY_F}"
+          echo ""                                                                                                                        >> "${_PR_BODY_F}"
+          echo "### Verified SHA-256 checksums"                                                                                         >> "${_PR_BODY_F}"
+          echo "| ABI | SHA-256 |"                                                                                                       >> "${_PR_BODY_F}"
+          echo "|---|---|"                                                                                                               >> "${_PR_BODY_F}"
+          echo "| \`aarch64\` | \`${CHECKSUM_AARCH64}\` |"                                                                              >> "${_PR_BODY_F}"
+          echo "| \`arm\`     | \`${CHECKSUM_ARM}\` |"                                                                                   >> "${_PR_BODY_F}"
+          echo "| \`i686\`    | \`${CHECKSUM_I686}\` |"                                                                                  >> "${_PR_BODY_F}"
+          echo "| \`x86_64\`  | \`${CHECKSUM_X86_64}\` |"                                                                               >> "${_PR_BODY_F}"
+          echo ""                                                                                                                        >> "${_PR_BODY_F}"
+          echo "### What this changes"                                                                                                   >> "${_PR_BODY_F}"
+          echo "- Updates the bootstrap download version in \`app/build.gradle\`"                                                        >> "${_PR_BODY_F}"
+          echo "- Updates all 8 SHA-256 checksums (both build variants)"                                                                 >> "${_PR_BODY_F}"
+          echo "- Merging this PR will trigger a new build + auto-publish with the updated Linux userland"                               >> "${_PR_BODY_F}"
+          echo ""                                                                                                                        >> "${_PR_BODY_F}"
+          echo "---"                                                                                                                     >> "${_PR_BODY_F}"
+          echo "*Opened automatically by NasTech Bootstrap Auto-Update bot*"                                                             >> "${_PR_BODY_F}"
+
           PR_URL=$(gh pr create \
             --title "Bootstrap update: ${CURRENT_VERSION} → ${LATEST_VERSION}" \
-            --body "## 🔄 Bootstrap Auto-Update
-
-| | |
-|---|---|
-| **Previous version** | \`${CURRENT_VERSION}\` |
-| **New version**      | \`${LATEST_VERSION}\` |
-| **Source tag**       | [\`${LATEST_TAG}\`](https://github.com/termux/termux-packages/releases/tag/${LATEST_TAG}) |
-
-### Verified SHA-256 checksums
-| ABI | SHA-256 |
-|---|---|
-| \`aarch64\` | \`${CHECKSUM_AARCH64}\` |
-| \`arm\`     | \`${CHECKSUM_ARM}\` |
-| \`i686\`    | \`${CHECKSUM_I686}\` |
-| \`x86_64\`  | \`${CHECKSUM_X86_64}\` |
-
-### What this changes
-- Updates the bootstrap download version in \`app/build.gradle\`
-- Updates all 8 SHA-256 checksums (both build variants)
-- Merging this PR will trigger a new build + auto-publish with the updated Linux userland
-
----
-*Opened automatically by NasTech Bootstrap Auto-Update bot*" \
+            --body-file "${_PR_BODY_F}" \
             --head "${BRANCH}" \
             --base master \
             --label "dependencies" 2>/dev/null || echo "(PR already open)")
+          rm -f "${_PR_BODY_F}"
 
           echo "✅ Pull request: ${PR_URL}"

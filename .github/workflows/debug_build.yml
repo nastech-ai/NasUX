@@ -83,10 +83,7 @@ jobs:
           for abi_label in Universal ARM64 ARM32 x86_64 x86; do
             APK_FILE="${APK_DIR_PATH}/NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
             if ! test -f "${APK_FILE}"; then
-              files_found="$(ls "${APK_DIR_PATH}")"
-              exit_on_error "Missing APK: NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk
-Files found:
-${files_found}"
+              exit_on_error "Missing APK: NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk. Found: $(ls "${APK_DIR_PATH}")"
             fi
             echo "  ✓ NasUX-App-${abi_label}-${APK_VERSION_TAG}.apk"
           done
