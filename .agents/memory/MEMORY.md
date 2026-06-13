@@ -1,1 +1,2 @@
-- [NasUX rebranding](nasux-rebranding.md) — Full NasUX→NasUX rebrand: package com.nastech.nasux, module nasux-shared, NasTech Agent bundled in assets, auto-installs on first boot.
+- [NasUX rebranding](nasux-rebranding.md) — Full NasUX rebrand: package com.nastech.nasux, module nasux-shared, NasTech Agent bundled in assets, auto-installs on first boot.
+- [Bootstrap patching](bootstrap-patching.md) — v4 patcher: text+ELF binary+ZIP entry names+GPG keys all patched; 130 ELF files have compiled-in symbols impossible to change without recompile.
