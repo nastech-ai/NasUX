@@ -35,7 +35,7 @@ android {
         implementation "io.noties.markwon:linkify:$markwonVersion"
         implementation "io.noties.markwon:recycler:$markwonVersion"
         implementation "io.noties.markwon:syntax-highlight:$markwonVersion"
-        implementation "io.noties.prism4j:prism4j:2.0.0"
+        implementation "io.noties:prism4j:2.0.0"
         implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
 
         implementation project(":terminal-view")
