@@ -148,8 +148,10 @@ jobs:
               sys.exit(2)
           PYEOF
 
+          set +e
           python3 /tmp/autofix.py
           EXIT=$?
+          set -e
           echo "exit_code=$EXIT" >> $GITHUB_OUTPUT
 
       - name: Commit auto-fixes
