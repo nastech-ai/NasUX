@@ -1,0 +1,76 @@
+name: NasTech Dependency Auto-Update
+
+on:
+  schedule:
+    # Runs every Monday at 08:00 UTC — keeps NasTech deps fresh
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-nastech-deps:
+    name: Auto-update NasTech Agent dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Update Python dependency pins in setup script
+        shell: bash
+        run: |
+          echo "Checking for latest NasTech package versions..."
+
+          # Get latest stable versions from PyPI
+          get_latest() {
+            pip index versions "$1" 2>/dev/null | head -1 | grep -oP '(?<=Available versions: )[^,]+' || echo ""
+          }
+
+          SETUP="app/src/main/assets/nasux-setup-all.sh"
+
+          # Packages to keep current
+          for pkg in openai rich httpx requests pyyaml tenacity jinja2 fire python-dotenv; do
+            LATEST=$(pip index versions "$pkg" 2>/dev/null | sed 's/.*Available versions: //' | cut -d',' -f1 | tr -d ' ' || true)
+            if [ -n "$LATEST" ]; then
+              # Update pin if line exists
+              sed -i "s|\"${pkg}==[^\"]*\"|\"${pkg}==${LATEST}\"|g" "$SETUP" 2>/dev/null || true
+              echo "  $pkg → $LATEST"
+            fi
+          done
+
+      - name: Update version in build.gradle
+        shell: bash
+        run: |
+          # Bump patch version for auto-update releases
+          CURRENT=$(grep 'versionCode' app/build.gradle | head -1 | grep -oP '\d+')
+          NEW_CODE=$((CURRENT + 1))
+          MINOR=$NEW_CODE
+          NEW_NAME="0.${MINOR}.0"
+          sed -i "s/versionCode $CURRENT/versionCode $NEW_CODE/" app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$NEW_NAME\"/" app/build.gradle
+          echo "Bumped versionCode $CURRENT → $NEW_CODE, versionName → $NEW_NAME"
+
+      - name: Commit and push updates
+        shell: bash
+        run: |
+          git config user.name "NasTech AI Bot"
+          git config user.email "nastech-bot@users.noreply.github.com"
+          git add app/build.gradle app/src/main/assets/nasux-setup-all.sh
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: auto-update NasTech dependencies and bump version [skip ci]"
+            git push origin master
+            echo "✓ NasTech auto-update committed and pushed."
+          fi

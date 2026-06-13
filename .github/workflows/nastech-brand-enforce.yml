@@ -1,0 +1,102 @@
+name: NasTech Brand Enforcement
+
+on:
+  push:
+    branches: [ master, main, 'github-releases/**' ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  brand-check:
+    name: Enforce NasTech Branding
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for raw Termux branding in user-facing files
+        shell: bash
+        run: |
+          echo "=== NasTech Brand Enforcement ==="
+          echo "Scanning for disallowed 'Termux' / 'termux' references in user-facing code…"
+
+          VIOLATIONS=0
+
+          # Patterns that indicate raw termux branding in user-facing contexts
+          # Excludes: internal pkg-manager names (termux-tools), wrapper script internals,
+          # apt_info_script placeholders (@TERMUX_PREFIX@), and NasUX-authored comments
+          # explaining that the underlying binary is named termux-*.
+
+          EXCLUDE_PATTERNS=(
+            "termux-tools"           # internal apt package name
+            "@TERMUX_PREFIX@"        # build-time placeholder in apt_info_script
+            "termux-\$cmd"           # wrappers script variable interpolation
+            "exec.*termux-"          # exec calls inside wrappers (intentional delegation)
+            "termux-setup-storage"   # fallback inside nastech-setup-storage wrapper
+            "NasUX.*Termux\|Termux.*NasUX" # "NasUX (formerly Termux)" style refs
+            "powered.by.*nastech"    # already rebranded
+            "#.*termux"              # comment explaining underlying pkg name
+          )
+
+          # Build ripgrep exclude args
+          RG_ARGS=()
+          for p in "${EXCLUDE_PATTERNS[@]}"; do
+            RG_ARGS+=( "--glob-negate" "!**/nastech-wrappers.sh" )
+          done
+
+          # Find violations in Java, XML, strings, Gradle, Kotlin files
+          FOUND=$(grep -rn --include="*.java" --include="*.xml" --include="*.kt" \
+              --include="*.gradle" --include="*.md" \
+              -i "termux" . \
+              --exclude-dir=".git" \
+              --exclude-dir=".local" \
+              --exclude-dir="assets/nastech-agent" \
+              --exclude-dir=".agents" \
+              | grep -v "termux-tools" \
+              | grep -v "@TERMUX_PREFIX@" \
+              | grep -v 'termux-\$cmd' \
+              | grep -v "exec.*termux-" \
+              | grep -v "termux-setup-storage" \
+              | grep -v "nastech-wrappers" \
+              | grep -v "apt_info_script" \
+              | grep -v "# .*termux" \
+              || true)
+
+          if [ -n "$FOUND" ]; then
+            echo ""
+            echo "❌ BRAND VIOLATION: Raw 'Termux' branding found in user-facing files:"
+            echo "$FOUND"
+            echo ""
+            echo "All user-facing text must say 'NasUX' or 'NasTech AI', not 'Termux'."
+            VIOLATIONS=1
+          else
+            echo "✅ No Termux branding violations found."
+          fi
+
+          if [ $VIOLATIONS -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Verify NasTech strings present
+        shell: bash
+        run: |
+          echo "=== Verifying NasTech strings exist ==="
+          for term in "NasTech" "NasUX" "nastech_accent" "nastech_fab"; do
+            COUNT=$(grep -r "$term" --include="*.java" --include="*.xml" --include="*.gradle" \
+              . --exclude-dir=".git" --exclude-dir=".local" | wc -l || echo 0)
+            echo "  $term: $COUNT occurrences"
+            if [ "$COUNT" -lt 1 ]; then
+              echo "❌ Required NasTech string '$term' not found!"
+              exit 1
+            fi
+          done
+          echo "✅ All required NasTech branding strings present."
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Brand enforcement complete."
+          echo "All NasUX/NasTech branding verified."

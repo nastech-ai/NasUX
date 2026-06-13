@@ -256,6 +256,9 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
         setNasTechButtonViews();
         setupNasTechFab();
 
+        // Check for NasUX app updates in background (silent, once per 24h)
+        new NasUXAutoUpdater(this).checkForUpdateAsync();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
