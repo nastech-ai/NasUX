@@ -15,8 +15,6 @@
 ** limitations under the License.
 */
 
-// Source: github.com/termux/termux-am-library v2.0.0 — repackaged for NasUX (com.nastech.nasux.am)
-
 package com.nastech.nasux.am;
 
 import android.app.Activity;
