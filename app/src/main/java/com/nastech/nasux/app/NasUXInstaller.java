@@ -383,9 +383,9 @@ final class NasUXInstaller {
 
     /**
      * Writes the correct APT sources.list so that `pkg install` fetches packages from the right
-     * repository. The bootstrap zip embeds a sources.list pointing at the Termux-compatible
-     * APT CDN (same package ABI as NasUX). This method overwrites it to use the canonical
-     * NasUX-compatible APT mirror and adds a comment block attributing the source.
+     * repository. The bootstrap zip embeds a sources.list pointing at the NasUX APT CDN.
+     * This method overwrites it with the canonical NasUX package mirror and adds a
+     * comment block attributing the source.
      */
     private static void fixPackageSources(final Context context) {
         try {
