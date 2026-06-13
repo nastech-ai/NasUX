@@ -1,0 +1,258 @@
+name: NasTech Auto-Fix Bot
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  auto-fix:
+    name: Detect & Auto-Fix Code Issues
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run auto-fix script
+        id: autofix
+        shell: bash
+        run: |
+          cat << 'PYEOF' > /tmp/autofix.py
+          import os, re, sys
+
+          ROOT       = os.getcwd()
+          NAMESPACE  = "com.nastech.nasux"
+          APP_JAVA   = os.path.join(ROOT, "app/src/main/java")
+          SHARED_JAVA= os.path.join(ROOT, "nasux-shared/src/main/java")
+
+          fixes_applied = []
+
+          # ── Fix 1: Missing R imports in sub-package Java files ─────────────────
+          R_IMPORT = f"import {NAMESPACE}.R;"
+          R_REF = re.compile(r'\bR\.(layout|id|string|color|drawable|menu|xml|raw|attr|style|dimen|anim|array)\b')
+
+          def fix_r_imports(java_dir, ns):
+              for dirpath, _, files in os.walk(java_dir):
+                  for fname in files:
+                      if not fname.endswith(".java"):
+                          continue
+                      fpath = os.path.join(dirpath, fname)
+                      with open(fpath, "r", encoding="utf-8") as f:
+                          content = f.read()
+
+                      # Extract package
+                      m = re.search(r'^package\s+([\w.]+)\s*;', content, re.MULTILINE)
+                      if not m:
+                          continue
+                      pkg = m.group(1)
+
+                      # Only fix sub-packages
+                      if pkg == ns or not pkg.startswith(ns + "."):
+                          continue
+
+                      # Only fix if file uses R. references
+                      if not R_REF.search(content):
+                          continue
+
+                      # Skip if already has the import
+                      if R_IMPORT in content:
+                          continue
+
+                      # Insert import after the package declaration
+                      new_content = re.sub(
+                          r'(^package\s+[\w.]+\s*;\s*\n)',
+                          r'\1\nimport ' + ns + r'.R;\n',
+                          content, count=1, flags=re.MULTILINE
+                      )
+                      if new_content != content:
+                          with open(fpath, "w", encoding="utf-8") as f:
+                              f.write(new_content)
+                          rel = os.path.relpath(fpath, ROOT)
+                          fixes_applied.append(f"add R import: {rel}")
+                          print(f"  ✓ Added R import to {rel}")
+
+          fix_r_imports(APP_JAVA, NAMESPACE)
+
+          # ── Fix 2: Trailing whitespace in Java files ────────────────────────────
+          for java_dir in [APP_JAVA, SHARED_JAVA]:
+              for dirpath, _, files in os.walk(java_dir):
+                  for fname in files:
+                      if not fname.endswith(".java"):
+                          continue
+                      fpath = os.path.join(dirpath, fname)
+                      with open(fpath, "r", encoding="utf-8") as f:
+                          lines = f.readlines()
+                      cleaned = [line.rstrip() + "\n" if line != "\n" else "\n" for line in lines]
+                      if cleaned != lines:
+                          with open(fpath, "w", encoding="utf-8") as f:
+                              f.writelines(cleaned)
+                          rel = os.path.relpath(fpath, ROOT)
+                          fixes_applied.append(f"strip trailing whitespace: {rel}")
+                          print(f"  ✓ Stripped trailing whitespace in {rel}")
+
+          # ── Fix 3: Ensure all .java files end with a single newline ────────────
+          for java_dir in [APP_JAVA, SHARED_JAVA]:
+              for dirpath, _, files in os.walk(java_dir):
+                  for fname in files:
+                      if not fname.endswith(".java"):
+                          continue
+                      fpath = os.path.join(dirpath, fname)
+                      with open(fpath, "rb") as f:
+                          raw = f.read()
+                      if raw and not raw.endswith(b"\n"):
+                          with open(fpath, "ab") as f:
+                              f.write(b"\n")
+                          rel = os.path.relpath(fpath, ROOT)
+                          fixes_applied.append(f"add final newline: {rel}")
+                          print(f"  ✓ Added final newline to {rel}")
+
+          # ── Fix 4: Remove Windows-style line endings (CRLF → LF) ──────────────
+          for java_dir in [APP_JAVA, SHARED_JAVA]:
+              for dirpath, _, files in os.walk(java_dir):
+                  for fname in files:
+                      if not fname.endswith(".java"):
+                          continue
+                      fpath = os.path.join(dirpath, fname)
+                      with open(fpath, "rb") as f:
+                          raw = f.read()
+                      if b"\r\n" in raw:
+                          with open(fpath, "wb") as f:
+                              f.write(raw.replace(b"\r\n", b"\n"))
+                          rel = os.path.relpath(fpath, ROOT)
+                          fixes_applied.append(f"CRLF→LF: {rel}")
+                          print(f"  ✓ Converted CRLF to LF in {rel}")
+
+          # ── Summary ─────────────────────────────────────────────────────────────
+          if fixes_applied:
+              print(f"\n=== Auto-fix applied {len(fixes_applied)} fix(es) ===")
+              for fix in fixes_applied:
+                  print(f"  • {fix}")
+              sys.exit(0)
+          else:
+              print("✅ No fixes needed — source is healthy.")
+              sys.exit(2)
+          PYEOF
+
+          python3 /tmp/autofix.py
+          EXIT=$?
+          echo "exit_code=$EXIT" >> $GITHUB_OUTPUT
+
+      - name: Commit auto-fixes
+        if: steps.autofix.outputs.exit_code == '0'
+        shell: bash
+        run: |
+          git config user.name  "NasTech Auto-Fix Bot"
+          git config user.email "nastech-bot@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Nothing staged — skipping commit."
+          else
+            git commit -m "fix(bot): auto-fix code health issues [skip ci]
+
+          Applied by NasTech Auto-Fix Bot:
+          $(git diff --cached --stat HEAD~1 2>/dev/null | tail -5 || git diff --cached --name-only)"
+            git push origin HEAD
+            echo "✅ Auto-fix commit pushed."
+          fi
+
+  scan-issues:
+    name: Report Unfixable Issues
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for common anti-patterns
+        shell: bash
+        run: |
+          echo "=== NasTech Code Health Scan ==="
+          ISSUES=0
+
+          # Check for System.out.println (should use Logger)
+          FOUND=$(grep -rn "System\.out\.println" \
+            --include="*.java" \
+            app/src/main/java nasux-shared/src/main/java \
+            --exclude-dir=".git" || true)
+          if [ -n "$FOUND" ]; then
+            echo "⚠️  System.out.println found (use Logger instead):"
+            echo "$FOUND" | head -10
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for printStackTrace (should use Logger.logError)
+          FOUND=$(grep -rn "\.printStackTrace()" \
+            --include="*.java" \
+            app/src/main/java nasux-shared/src/main/java \
+            --exclude-dir=".git" || true)
+          if [ -n "$FOUND" ]; then
+            echo "⚠️  printStackTrace() found (use Logger.logError instead):"
+            echo "$FOUND" | head -10
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for hardcoded strings in Java (R.string should be used)
+          FOUND=$(grep -rn '"NasUX\|"NasTech' \
+            --include="*.java" \
+            app/src/main/java \
+            --exclude-dir=".git" | grep -v "//.*\"" || true)
+          if [ -n "$FOUND" ]; then
+            echo "ℹ️  Hardcoded brand strings in Java (consider using R.string):"
+            echo "$FOUND" | head -10
+          fi
+
+          # Check for TODO/FIXME/HACK comments
+          FOUND=$(grep -rn "TODO\|FIXME\|HACK\|XXX\|BUG" \
+            --include="*.java" \
+            app/src/main/java nasux-shared/src/main/java \
+            --exclude-dir=".git" || true)
+          if [ -n "$FOUND" ]; then
+            echo "ℹ️  TODO/FIXME markers:"
+            echo "$FOUND" | head -20
+          fi
+
+          # Check for empty catch blocks
+          FOUND=$(grep -rn "catch.*{[[:space:]]*}" \
+            --include="*.java" \
+            app/src/main/java nasux-shared/src/main/java \
+            --exclude-dir=".git" || true)
+          if [ -n "$FOUND" ]; then
+            echo "⚠️  Empty catch blocks found (swallowed exceptions):"
+            echo "$FOUND" | head -10
+            ISSUES=$((ISSUES + 1))
+          fi
+
+          # Check for deprecated APIs
+          FOUND=$(grep -rn "@SuppressWarnings.*deprecated\|@Deprecated" \
+            --include="*.java" \
+            app/src/main/java nasux-shared/src/main/java \
+            --exclude-dir=".git" || true)
+          if [ -n "$FOUND" ]; then
+            echo "ℹ️  Deprecated API usage:"
+            echo "$FOUND" | head -10
+          fi
+
+          echo ""
+          if [ "$ISSUES" -gt 0 ]; then
+            echo "⚠️  Found $ISSUES issue category(ies) that may need manual attention."
+            echo "These are warnings, not build failures — the build can still succeed."
+          else
+            echo "✅ No critical anti-patterns found."
+          fi

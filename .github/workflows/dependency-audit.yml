@@ -1,0 +1,190 @@
+name: Dependency Vulnerability Audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 3'
+  push:
+    paths:
+      - '**/build.gradle'
+      - 'gradle.properties'
+      - '**/gradle-wrapper.properties'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  audit:
+    name: Dependency CVE & Health Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-audit-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-audit-
+
+      - name: List all resolved dependency versions
+        shell: bash
+        run: |
+          echo "=== Resolved Dependency Tree ==="
+          ./gradlew :app:dependencies --configuration debugRuntimeClasspath \
+            --no-daemon 2>/dev/null | grep -E '^\+|\\---|\|' | head -100 || true
+
+      - name: Check for known vulnerable dependency versions
+        shell: bash
+        run: |
+          echo "=== Known Vulnerability Check ==="
+          ISSUES=0
+
+          # Extract all dependency versions from build.gradle files
+          ALL_DEPS=$(grep -rh 'implementation\|api\|compileOnly\|runtimeOnly' \
+            --include="*.gradle" . 2>/dev/null \
+            | grep -oP '"[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+:[0-9a-zA-Z._-]+"' \
+            | tr -d '"' || true)
+
+          echo "Scanning $(echo "$ALL_DEPS" | wc -l) dependencies..."
+
+          # Known vulnerable versions (update this list as CVEs are disclosed)
+          declare -A KNOWN_VULNS=(
+            ["com.google.guava:guava:18"]="CVE-2018-10237: deserialization issue"
+            ["com.google.guava:guava:19"]="CVE-2018-10237: deserialization issue"
+            ["com.google.guava:guava:20"]="CVE-2018-10237: deserialization issue"
+            ["commons-io:commons-io:2.4"]="CVE-2021-29425: path traversal"
+            ["io.noties.markwon:core:3"]="outdated major version"
+          )
+
+          while IFS= read -r dep; do
+            for vuln_prefix in "${!KNOWN_VULNS[@]}"; do
+              if [[ "$dep" == ${vuln_prefix}* ]]; then
+                echo "  ❌ VULNERABLE: $dep — ${KNOWN_VULNS[$vuln_prefix]}"
+                ISSUES=$((ISSUES + 1))
+              fi
+            done
+          done <<< "$ALL_DEPS"
+
+          if [ "$ISSUES" -eq 0 ]; then
+            echo "✅ No known vulnerable dependency versions found."
+          else
+            echo ""
+            echo "❌ Found $ISSUES vulnerable dependency(ies). Update them in build.gradle."
+            exit 1
+          fi
+
+      - name: Check for outdated AndroidX versions
+        shell: bash
+        run: |
+          echo "=== AndroidX Version Check ==="
+          python3 << 'PYEOF'
+          import urllib.request, json, re, sys
+
+          def latest_version(group, artifact):
+              url = f"https://dl.google.com/android/maven2/{group.replace('.','/')}/{artifact}/maven-metadata.xml"
+              try:
+                  with urllib.request.urlopen(url, timeout=10) as r:
+                      content = r.read().decode()
+                  m = re.search(r'<latest>(.*?)</latest>', content)
+                  if m: return m.group(1)
+                  versions = re.findall(r'<version>(.*?)</version>', content)
+                  return versions[-1] if versions else None
+              except Exception as e:
+                  return None
+
+          # Key dependencies to check for updates
+          to_check = [
+              ("androidx.appcompat", "appcompat"),
+              ("androidx.core", "core"),
+              ("androidx.annotation", "annotation"),
+              ("com.google.android.material", "material"),
+          ]
+
+          print("Checking for AndroidX/Material updates...")
+          has_updates = False
+
+          # Read current versions from build.gradle files
+          import os
+          current = {}
+          for dirpath, _, files in os.walk("."):
+              for f in files:
+                  if not f.endswith(".gradle"): continue
+                  try:
+                      with open(os.path.join(dirpath, f)) as fh:
+                          content = fh.read()
+                      for m in re.finditer(r'"([\w.]+):([\w-]+):([\d.]+)"', content):
+                          g, a, v = m.groups()
+                          current[f"{g}:{a}"] = v
+                  except: pass
+
+          for group, artifact in to_check:
+              key = f"{group}:{artifact}"
+              cur = current.get(key, "not found")
+              latest = latest_version(group, artifact)
+              if latest and cur != "not found":
+                  cur_parts = [int(x) for x in cur.split(".") if x.isdigit()]
+                  lat_parts = [int(x) for x in latest.split(".") if x.isdigit()]
+                  if lat_parts > cur_parts:
+                      print(f"  ℹ️  {key}: {cur} → {latest} (update available)")
+                      has_updates = True
+                  else:
+                      print(f"  ✅ {key}: {cur} (up to date)")
+              else:
+                  print(f"  ℹ️  {key}: {cur} (could not check latest)")
+
+          if has_updates:
+              print("\nℹ️  Updates available. Run the auto-update workflow to apply them.")
+          else:
+              print("\n✅ All checked dependencies are current.")
+          PYEOF
+
+      - name: Check Gradle wrapper version
+        shell: bash
+        run: |
+          echo "=== Gradle Wrapper Version ==="
+          CURRENT=$(grep 'gradle-' gradle/wrapper/gradle-wrapper.properties | grep -oP '\d+\.\d+(\.\d+)?')
+          LATEST=$(curl -s https://services.gradle.org/versions/current | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "unknown")
+          echo "  Current: $CURRENT"
+          echo "  Latest:  $LATEST"
+          if [ "$CURRENT" != "$LATEST" ] && [ "$LATEST" != "unknown" ]; then
+            echo "  ℹ️  Gradle update available: $CURRENT → $LATEST"
+          else
+            echo "  ✅ Gradle wrapper is current."
+          fi
+
+      - name: Check NDK version
+        shell: bash
+        run: |
+          echo "=== NDK Version ==="
+          CURRENT=$(grep 'ndkVersion' gradle.properties | grep -oP '[\d.]+')
+          echo "  Current NDK: $CURRENT"
+          echo "  ✅ NDK version recorded."
+
+      - name: Generate dependency health summary
+        if: always()
+        shell: bash
+        run: |
+          echo ""
+          echo "╔══════════════════════════════════════════════╗"
+          echo "║     NasUX Dependency Audit Complete          ║"
+          echo "╚══════════════════════════════════════════════╝"
+          echo ""
+          echo "  Run 'nastech-auto-update-check' to auto-update deps."
+          echo "  See Security tab for CodeQL findings."
