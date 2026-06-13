@@ -1,0 +1,4 @@
+# Bootstrap ZIPs are build artifacts — downloaded by downloadBootstraps() or
+# published as GitHub Release assets at nastech-ai/NasUX-Packages.
+# Patched versions live at: https://github.com/nastech-ai/NasUX-Packages/releases
+bootstrap-*.zip
