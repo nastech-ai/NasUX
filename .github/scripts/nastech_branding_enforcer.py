@@ -45,6 +45,8 @@ SKIP_FILES = {
     "nastech_branding_enforcer.yml",  # this workflow
     "nastech_branding_bot.py",        # old bot script (regex patterns inside)
     "nastech_branding_bot.yml",       # old bot workflow (patterns inside)
+    "BRANDING.md",                    # branding reference map — lists old names intentionally
+    "CHANGELOG.md",                   # historical log — may reference old names
 }
 
 # File extensions eligible for scanning
@@ -58,8 +60,6 @@ SCAN_EXTS = {
 # These are external identifiers we don't own and cannot rename.
 PROTECTED = [
     "packages.termux.dev",           # External APT CDN — not owned by NasTech
-    "packages-cf.termux.dev",        # External APT CDN mirror — not owned by NasTech
-    "termux-main",                   # APT repo path within external CDN — not owned by NasTech
     "TERMUX_VERSION",                # Android bootstrap env var (external)
     "TERMUX_APP_PACKAGE_NAME",       # Android bootstrap env var (external)
     "com.termux/files",              # External Android data path (detection only)
