@@ -276,4 +276,8 @@ afterEvaluate {
     android.applicationVariants.all { variant ->
         variant.javaCompileProvider.get().dependsOn(downloadBootstraps)
     }
+    // Bootstrap ZIPs must exist before NDK ndk-build runs (.incbin in nasux-bootstrap-zip.S)
+    tasks.matching { it.name.startsWith("buildNdkBuild") || it.name.startsWith("generateJsonModel") }.each { t ->
+        t.dependsOn(downloadBootstraps)
+    }
 }
