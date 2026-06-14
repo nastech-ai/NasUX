@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """
-NasTech Agent CLI launcher — NasUX / Powered by NasTech AI.
+NasTech Agent CLI — NasUX / Powered by NasTech AI
+Single global entrypoint for all `nastech` commands.
 
-Single entrypoint for all `nastech` commands.
-Supports: nastech, nastech --help, nastech --debug, nastech <subcommand>
+Self-maintaining features:
+  - Auto-installs missing dependencies on first run
+  - Offline safe: skips network ops when no internet
+  - nastech update: safe semver-aware updates
+  - nastech --debug / --verbose: full boot trace
+  - nastech --help: dynamic command list (or fallback if not installed)
 
-Boot sequence (this wrapper):
-  1. Apply Windows UTF-8 bootstrap (no-op on Android/POSIX)
-  2. Validate Python version (3.11+)
-  3. Locate the installed nastech_cli package
-  4. Delegate to nastech_cli.main or print a clear install error
+Boot steps (this wrapper):
+  1. Windows UTF-8 bootstrap (no-op on Android/POSIX)
+  2. Python 3.11+ guard
+  3. Project root → sys.path
+  4. Venv auto-detection + activation
+  5. Dependency self-heal (first run or missing packages)
+  6. Route to nastech_cli.main or structured fallback
 """
 
 from __future__ import annotations
@@ -18,218 +25,291 @@ import os
 import sys
 import time
 
-# ── 1. Windows UTF-8 bootstrap (no-op on POSIX / Android) ────────────────────
+# ── 1. Windows UTF-8 bootstrap ────────────────────────────────────────────────
 try:
     import nastech_bootstrap  # noqa: F401
 except ModuleNotFoundError:
     pass
 
-# ── 2. Resolve project root so sibling modules (nastech_constants, etc.) ──────
-#       are importable when the venv hasn't been activated yet.
+# ── 2. Project root → sys.path ───────────────────────────────────────────────
 _SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
-# ── 3. Boot timestamp (for --debug timing output) ─────────────────────────────
 _BOOT_START = time.monotonic()
 
-# ── 4. Detect --debug / --verbose before argparse so boot logs appear early ──
-_DEBUG = "--debug" in sys.argv or "--verbose" in sys.argv or "-v" in sys.argv
-_HELP  = "--help" in sys.argv or "-h" in sys.argv or (len(sys.argv) == 1)
+# ── 3. Parse flags early (before argparse, so boot logs can appear) ───────────
+_argv = sys.argv[1:]
+_DEBUG   = "--debug" in _argv or "--verbose" in _argv or "-v" in _argv
+_HELP    = "--help" in _argv or "-h" in _argv or not _argv
+_VERSION = "--version" in _argv or "-V" in _argv
+_UPDATE  = _argv[:1] == ["update"]
+_DOCTOR  = _argv[:1] == ["doctor"]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Logging helpers (no external deps — safe before nastech_cli is loaded)
-# ─────────────────────────────────────────────────────────────────────────────
+# ── 4. Colors ─────────────────────────────────────────────────────────────────
+_TTY = sys.stderr.isatty()
+GRN  = "\033[0;32m" if _TTY else ""
+YEL  = "\033[0;33m" if _TTY else ""
+CYN  = "\033[0;36m" if _TTY else ""
+RED  = "\033[0;31m" if _TTY else ""
+BLD  = "\033[1m"    if _TTY else ""
+NC   = "\033[0m"    if _TTY else ""
 
-GREEN  = "\033[0;32m"
-YELLOW = "\033[0;33m"
-CYAN   = "\033[0;36m"
-RED    = "\033[0;31m"
-BOLD   = "\033[1m"
-NC     = "\033[0m"
 
-# Disable colors when stdout is not a tty (piped / CI)
-if not sys.stdout.isatty():
-    GREEN = YELLOW = CYAN = RED = BOLD = NC = ""
+def _ms() -> str:
+    return f"{int((time.monotonic() - _BOOT_START) * 1000)}ms"
 
 
 def _boot(msg: str) -> None:
     if _DEBUG:
-        elapsed = time.monotonic() - _BOOT_START
-        print(f"{CYAN}[BOOT +{elapsed:.3f}s]{NC} {msg}", file=sys.stderr)
+        print(f"{CYN}[BOOT {_ms()}]{NC} {msg}", file=sys.stderr, flush=True)
 
 
 def _ok(msg: str) -> None:
-    print(f"{GREEN}[OK]{NC} {msg}", file=sys.stderr)
+    print(f"{GRN}[OK]{NC}   {msg}", file=sys.stderr, flush=True)
 
 
 def _warn(msg: str) -> None:
-    print(f"{YELLOW}[WARN]{NC} {msg}", file=sys.stderr)
+    print(f"{YEL}[WARN]{NC} {msg}", file=sys.stderr, flush=True)
 
 
 def _err(msg: str) -> None:
-    print(f"{RED}[ERROR]{NC} {msg}", file=sys.stderr)
+    print(f"{RED}[ERROR]{NC} {msg}", file=sys.stderr, flush=True)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Python version guard
-# ─────────────────────────────────────────────────────────────────────────────
-
-_boot("Checking Python version...")
-
+# ── 5. Python version guard ───────────────────────────────────────────────────
 if sys.version_info < (3, 11):
     _err(
         f"NasTech requires Python 3.11+. "
-        f"You are running Python {sys.version_info.major}.{sys.version_info.minor}."
+        f"You have {sys.version_info.major}.{sys.version_info.minor}."
     )
-    _err("On NasUX: run  pkg install python  to upgrade.")
-    _err("On desktop: install Python 3.11+ from python.org")
+    _err("NasUX: pkg install python   |   Desktop: python.org")
     sys.exit(1)
 
-_boot(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} OK")
+_boot(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Fallback --help when nastech_cli is not yet installed
-# ─────────────────────────────────────────────────────────────────────────────
-
-_FALLBACK_HELP = f"""{BOLD}NasUX — Powered by NasTech AI{NC}
-
-{CYAN}Usage:{NC}  nastech [OPTIONS] COMMAND [ARGS]
-
-{CYAN}Quick start:{NC}
-  nastech chat          Start an interactive AI chat session
-  nastech setup         Run the setup wizard (choose model/provider)
-  nastech dashboard     Open the web dashboard (port 9119)
-  nastech gateway       Start the gateway service
-  nastech acp           Start the ACP stdio adapter
-  nastech cron          Run the cron scheduler
-  nastech doctor        Diagnose the NasTech installation
-  nastech logs          View agent logs
-  nastech version       Print version information
-  nastech update        Update NasTech to the latest version
-
-{CYAN}Options:{NC}
-  --help, -h            Show this help message
-  --version             Print version and exit
-  --debug, --verbose    Enable verbose boot and debug logging
-
-{CYAN}NasTech is not installed yet.{NC}
-Run the setup script to install:
-
-  {YELLOW}bash ~/nastech-agent/install.sh{NC}
-
-Then run:
-  {YELLOW}nastech setup{NC}
-  {YELLOW}nastech chat{NC}
-"""
-
-
-def _try_import_nastech_cli():
-    """Try to import nastech_cli.main.  Return (main_fn, version) or (None, None)."""
-    try:
-        from nastech_cli.main import main as _main
-        try:
-            from nastech_cli import __version__ as _ver
-        except Exception:
-            _ver = "unknown"
-        return _main, _ver
-    except ModuleNotFoundError:
-        return None, None
-    except ImportError as exc:
-        return None, str(exc)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Locate venv and activate it if we aren't already inside one
-# ─────────────────────────────────────────────────────────────────────────────
+# ── 6. Venv auto-activation ───────────────────────────────────────────────────
 
 def _activate_venv() -> bool:
-    """Try to activate the NasTech venv if we're not already inside one."""
     if os.environ.get("VIRTUAL_ENV"):
-        _boot("Already inside a virtual environment — skipping venv activation")
+        _boot("Already in venv")
         return True
-
+    nastech_home = os.environ.get("NASTECH_HOME", os.path.join(os.path.expanduser("~"), ".nastech"))
     candidates = [
-        os.path.join(os.path.expanduser("~"), ".nastech", "NasTech-Agent", "venv"),
+        os.path.join(nastech_home, "NasTech-Agent", "venv"),
         os.path.join(_SCRIPT_DIR, ".venv"),
         os.path.join(_SCRIPT_DIR, "venv"),
     ]
-
     for venv_dir in candidates:
-        site_pkgs_root = os.path.join(
-            venv_dir, "lib",
-            f"python{sys.version_info.major}.{sys.version_info.minor}",
-            "site-packages",
-        )
-        if os.path.isdir(site_pkgs_root):
-            _boot(f"Activating venv at {venv_dir}")
-            if site_pkgs_root not in sys.path:
-                sys.path.insert(0, site_pkgs_root)
-            # Propagate venv bin so sub-processes find the right python
-            venv_bin = os.path.join(venv_dir, "bin")
-            os.environ["VIRTUAL_ENV"] = venv_dir
-            os.environ["PATH"] = venv_bin + os.pathsep + os.environ.get("PATH", "")
-            return True
-
+        lib_dir = os.path.join(venv_dir, "lib")
+        if not os.path.isdir(lib_dir):
+            continue
+        try:
+            for entry in os.listdir(lib_dir):
+                if entry.startswith("python"):
+                    site = os.path.join(lib_dir, entry, "site-packages")
+                    if os.path.isdir(site):
+                        if site not in sys.path:
+                            sys.path.insert(0, site)
+                        venv_bin = os.path.join(venv_dir, "bin")
+                        os.environ["VIRTUAL_ENV"] = venv_dir
+                        os.environ["PATH"] = venv_bin + os.pathsep + os.environ.get("PATH", "")
+                        _boot(f"Venv activated: {venv_dir}")
+                        return True
+        except OSError:
+            continue
+    _boot("No venv found — using system Python")
     return False
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Main boot flow
-# ─────────────────────────────────────────────────────────────────────────────
+_activate_venv()
+
+# ── 7. Dependency self-heal ───────────────────────────────────────────────────
+
+def _run_dep_check() -> None:
+    """
+    Run dependency check on first boot or when packages are missing.
+    Skipped if lock file indicates first-run was already completed AND
+    all core imports succeed (fast path).
+    """
+    # Fast path: try importing key module — if it works, deps are fine
+    try:
+        import importlib
+        importlib.import_module("click")
+        importlib.import_module("fastapi")
+        _boot("Core deps present — skipping dep check")
+        return
+    except ImportError:
+        pass
+
+    _boot("Core deps missing — running dependency bootstrap...")
+    try:
+        from nastech_deps import DependencyManager
+        dm = DependencyManager(
+            debug=_DEBUG,
+            nastech_home=_get_nastech_home(),
+        )
+        dm.run_boot_check()
+    except ImportError:
+        _warn("nastech_deps not found — running pip install fallback")
+        _pip_fallback_install()
+    except Exception as exc:
+        _warn(f"Dep check failed: {exc} — continuing anyway")
+
+
+def _get_nastech_home():
+    from pathlib import Path
+    return Path(os.environ.get("NASTECH_HOME", str(os.path.join(os.path.expanduser("~"), ".nastech"))))
+
+
+def _pip_fallback_install() -> None:
+    """Last-resort pip install of bare minimum packages."""
+    import subprocess
+    minimal = ["click", "fastapi", "uvicorn", "pyyaml", "httpx", "rich"]
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet", "--no-input"] + minimal,
+            timeout=120,
+            check=False,
+        )
+        _boot("Fallback pip install completed")
+    except Exception as exc:
+        _warn(f"Fallback pip install failed: {exc}")
+
+
+# ── 8. Structured fallback --help (when nastech_cli is not installed) ─────────
+
+_FALLBACK_HELP = f"""{BLD}NasUX — Powered by NasTech AI{NC}
+
+{CYN}Usage:{NC}  nastech [OPTIONS] COMMAND [ARGS]
+
+{CYN}Core commands:{NC}
+  chat          Start interactive AI chat
+  setup         Run setup wizard (choose AI provider + model)
+  dashboard     Open web dashboard (http://127.0.0.1:9119)
+  gateway       Start gateway service
+  acp           Start ACP stdio adapter (for IDE integration)
+  cron          Run cron scheduler
+  update        Check and install safe updates
+  doctor        Self-diagnostic health check
+  logs          View agent logs
+  version       Print version information
+
+{CYN}Options:{NC}
+  --help, -h            Show this help
+  --version, -V         Print version and exit
+  --debug, --verbose    Enable verbose boot logging
+
+{YEL}NasTech CLI is not installed yet.{NC}
+Install it with:
+
+  bash ~/nastech-agent/install.sh
+
+Then configure and start:
+  nastech setup
+  nastech chat
+"""
+
+# ── 9. Attempt to load nastech_cli ────────────────────────────────────────────
+
+def _load_nastech_cli():
+    """Try to import nastech_cli.main. Returns (main_fn, version) or (None, err)."""
+    try:
+        from nastech_cli.main import main as _fn
+        try:
+            from nastech_cli import __version__ as _v
+        except Exception:
+            _v = "unknown"
+        return _fn, _v
+    except ModuleNotFoundError:
+        return None, "not-installed"
+    except ImportError as exc:
+        return None, str(exc)
+    except Exception as exc:
+        return None, str(exc)
+
+
+# ── MAIN ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     _boot("Loading modules...")
 
-    # Try with current sys.path first; if that fails, activate venv and retry.
-    main_fn, meta = _try_import_nastech_cli()
+    # ── Handle `nastech update` before loading nastech_cli ───────────────────
+    if _UPDATE:
+        try:
+            from nastech_deps import DependencyManager
+            import argparse
+            p = argparse.ArgumentParser(add_help=False)
+            p.add_argument("--debug", "-v", "--verbose", action="store_true")
+            p.add_argument("--yes", "-y", action="store_true", dest="assume_yes")
+            p.add_argument("--force", action="store_true")
+            known, _ = p.parse_known_args()
+            dm = DependencyManager(
+                debug=known.debug or _DEBUG,
+                nastech_home=_get_nastech_home(),
+                assume_yes=known.assume_yes,
+            )
+            rc = dm.run_update(force_major=known.force)
+            sys.exit(rc)
+        except ImportError:
+            _err("nastech_deps not found — cannot run update")
+            sys.exit(1)
+        except Exception as exc:
+            _err(f"Update failed: {exc}")
+            if _DEBUG:
+                import traceback; traceback.print_exc()
+            sys.exit(1)
 
-    if main_fn is None:
-        _boot("nastech_cli not found on current path — searching for venv...")
-        _activate_venv()
-        main_fn, meta = _try_import_nastech_cli()
+    # ── Handle `nastech doctor` ───────────────────────────────────────────────
+    if _DOCTOR:
+        try:
+            from nastech_deps import DependencyManager
+            dm = DependencyManager(debug=_DEBUG, nastech_home=_get_nastech_home())
+            sys.exit(dm.run_doctor())
+        except ImportError:
+            _err("nastech_deps not found — cannot run doctor")
+            sys.exit(1)
 
-    if main_fn is None:
-        # Could not find nastech_cli at all.
-        if _HELP:
-            print(_FALLBACK_HELP)
-            sys.exit(0)
-        _err("NasTech Agent is not installed.")
-        _err("")
-        _err("To install, run:")
-        _err(f"  bash {_SCRIPT_DIR}/install.sh")
-        _err("")
-        _err("Then try again:  nastech --help")
-        if isinstance(meta, str) and meta:
-            _err(f"Import error detail: {meta}")
-        sys.exit(1)
-
-    _boot(f"nastech_cli loaded (version: {meta})")
-    _boot("Initializing AI engine...")
-    _boot("Registering commands...")
-
-    # Pass --debug through to nastech_cli via env var so it doesn't confuse
-    # the CLI's own argparse (nastech_cli has its own --verbose flag).
+    # ── Dependency self-heal (skipped if deps already present) ───────────────
     if _DEBUG:
         os.environ.setdefault("NASTECH_DEBUG", "1")
         os.environ.setdefault("NASTECH_LOG_LEVEL", "DEBUG")
 
-    _ok(f"NasUX Ready  (startup: {time.monotonic() - _BOOT_START:.2f}s)")
+    _run_dep_check()
 
+    # ── Try loading nastech_cli ───────────────────────────────────────────────
+    main_fn, meta = _load_nastech_cli()
+
+    if main_fn is None:
+        if _HELP:
+            print(_FALLBACK_HELP)
+            sys.exit(0)
+        _err("NasTech CLI not installed.")
+        _err(f"Run:  bash {_SCRIPT_DIR}/install.sh")
+        if meta and meta not in ("not-installed", ""):
+            _err(f"Detail: {meta}")
+        sys.exit(1)
+
+    _boot(f"nastech_cli loaded (version: {meta})")
+    _boot("Registering command router...")
+
+    if _DEBUG:
+        _ok(f"NasUX Ready (startup: {_ms()})")
+
+    # ── Delegate to nastech_cli ───────────────────────────────────────────────
     try:
         main_fn()
     except KeyboardInterrupt:
-        print("\nInterrupted.", file=sys.stderr)
+        print("", file=sys.stderr)
         sys.exit(0)
     except SystemExit:
         raise
     except Exception as exc:
-        _err(f"NasTech crashed unexpectedly: {exc}")
+        _err(f"NasTech crashed: {exc}")
         if _DEBUG:
-            import traceback
-            traceback.print_exc()
+            import traceback; traceback.print_exc()
         else:
-            _err("Re-run with  nastech --debug  for full traceback.")
+            _err("Re-run with  nastech --debug  for full traceback")
         sys.exit(1)
 
 

@@ -472,7 +472,7 @@ final class NasUXInstaller {
             // Make key scripts executable
             String[] executableFiles = {
                 "install.sh", "start.sh", "nastech",
-                "nastech_launcher.py"
+                "nastech_launcher.py", "nastech_deps.py"
             };
             for (String fname : executableFiles) {
                 File f = new File(agentDestDir, fname);

@@ -1,28 +1,29 @@
 """
-NasTech Agent — Python Boot Launcher
+NasTech Agent — Self-Maintaining Boot Launcher
 Powered by NasTech AI / NasUX
 
-Handles the full 6-step service boot sequence in Python:
-  1. Core config loader
-  2. Logger system
-  3. AI engine
-  4. Command registry (130 commands)
-  5. Gateway services
-  6. UI (if present)
+Strict 8-step boot sequence:
+  1. Environment check       — Python version, OS detection, venv
+  2. Dependency check & fix  — pip / npm / gradle via nastech_deps.py
+  3. Config loader           — NASTECH_HOME, .env, config.yaml
+  4. Logger init             — nastech_logging.setup_logging()
+  5. AI engine startup       — import + validate nastech_cli
+  6. Command registry load   — enumerate all 130+ commands
+  7. Gateway services start  — backend on :9119, runner
+  8. READY state             — print banner, wait on services
+
+Performance:
+  - Dependency check is lock-file guarded (no reinstall on every boot)
+  - Steps are individually try/catch isolated (one failure ≠ app crash)
+  - Background service monitor auto-isolates crashed services
 
 Usage:
-    python3 nastech_launcher.py [--debug] [--no-ui] [--no-gateway]
-
-This launcher is intentionally standalone — it imports nothing from
-nastech_cli until after the venv is located and activated, so it works
-as a bootstrap before the package is fully installed.
+    python3 nastech_launcher.py [--debug] [--no-ui] [--no-gateway] [--check]
 """
 
 from __future__ import annotations
 
 import argparse
-import asyncio
-import importlib
 import os
 import signal
 import subprocess
@@ -32,181 +33,197 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-# ── Resolve project root ──────────────────────────────────────────────────────
+# ── Project root ──────────────────────────────────────────────────────────────
 AGENT_ROOT = Path(__file__).resolve().parent
 if str(AGENT_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT_ROOT))
 
-# ── Apply Windows UTF-8 bootstrap early (no-op on POSIX/Android) ─────────────
+# ── Windows UTF-8 bootstrap (no-op on POSIX / Android) ───────────────────────
 try:
     import nastech_bootstrap  # noqa: F401
 except ModuleNotFoundError:
     pass
 
 # ── Colors ────────────────────────────────────────────────────────────────────
-_COLORS = sys.stderr.isatty()
-GREEN  = "\033[0;32m" if _COLORS else ""
-YELLOW = "\033[0;33m" if _COLORS else ""
-CYAN   = "\033[0;36m" if _COLORS else ""
-RED    = "\033[0;31m" if _COLORS else ""
-BOLD   = "\033[1m"    if _COLORS else ""
-DIM    = "\033[2m"    if _COLORS else ""
-NC     = "\033[0m"    if _COLORS else ""
+_C = sys.stderr.isatty()
+GRN  = "\033[0;32m" if _C else ""
+YEL  = "\033[0;33m" if _C else ""
+CYN  = "\033[0;36m" if _C else ""
+RED  = "\033[0;31m" if _C else ""
+BLD  = "\033[1m"    if _C else ""
+NC   = "\033[0m"    if _C else ""
 
 _boot_start = time.monotonic()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Logging helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
 _debug_mode = False
 
 
-def _elapsed() -> str:
-    ms = int((time.monotonic() - _boot_start) * 1000)
-    return f"+{ms}ms"
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+def _elapsed_ms() -> str:
+    return f"+{int((time.monotonic() - _boot_start) * 1000)}ms"
 
 
-def boot(msg: str) -> None:
+def log_boot(msg: str) -> None:
     if _debug_mode:
-        print(f"{CYAN}[BOOT {_elapsed()}]{NC} {msg}", file=sys.stderr, flush=True)
+        print(f"{CYN}[BOOT {_elapsed_ms()}]{NC} {msg}", file=sys.stderr, flush=True)
 
 
-def ok(msg: str) -> None:
-    print(f"{GREEN}[OK]{NC}   {msg}", file=sys.stderr, flush=True)
+def log_ok(msg: str) -> None:
+    print(f"{GRN}[OK]{NC}   {msg}", file=sys.stderr, flush=True)
 
 
-def info(msg: str) -> None:
-    print(f"{CYAN}[INFO]{NC} {msg}", file=sys.stderr, flush=True)
+def log_info(msg: str) -> None:
+    print(f"{CYN}[INFO]{NC} {msg}", file=sys.stderr, flush=True)
 
 
-def warn(msg: str) -> None:
-    print(f"{YELLOW}[WARN]{NC} {msg}", file=sys.stderr, flush=True)
+def log_warn(msg: str) -> None:
+    print(f"{YEL}[WARN]{NC} {msg}", file=sys.stderr, flush=True)
 
 
-def err(msg: str) -> None:
+def log_err(msg: str) -> None:
     print(f"{RED}[ERROR]{NC} {msg}", file=sys.stderr, flush=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Service registry — tracks running background processes for cleanup
+# Service registry
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _ServiceRegistry:
-    def __init__(self) -> None:
+    def __init__(self):
         self._lock = threading.Lock()
         self._procs: dict[str, subprocess.Popen] = {}
-        self._threads: dict[str, threading.Thread] = {}
         self._failed: list[str] = []
 
-    def register_proc(self, name: str, proc: subprocess.Popen) -> None:
+    def add(self, name: str, proc: subprocess.Popen) -> None:
         with self._lock:
             self._procs[name] = proc
-        boot(f"Registered service '{name}' (PID {proc.pid})")
+        log_boot(f"Registered '{name}' (PID {proc.pid})")
 
-    def register_thread(self, name: str, t: threading.Thread) -> None:
+    def fail(self, name: str) -> None:
         with self._lock:
-            self._threads[name] = t
+            if name not in self._failed:
+                self._failed.append(name)
 
-    def mark_failed(self, name: str) -> None:
-        with self._lock:
-            self._failed.append(name)
-
-    def failed_services(self) -> list[str]:
+    def failed(self) -> list[str]:
         with self._lock:
             return list(self._failed)
 
-    def shutdown_all(self) -> None:
+    def all_procs(self) -> dict[str, subprocess.Popen]:
         with self._lock:
-            procs = dict(self._procs)
+            return dict(self._procs)
+
+    def shutdown(self) -> None:
+        procs = self.all_procs()
         for name, proc in procs.items():
             try:
                 proc.terminate()
                 proc.wait(timeout=5)
-                boot(f"Service '{name}' terminated cleanly")
             except subprocess.TimeoutExpired:
                 proc.kill()
-                warn(f"Service '{name}' force-killed (did not terminate in 5s)")
-            except Exception as exc:
-                boot(f"Error stopping service '{name}': {exc}")
+                log_warn(f"Force-killed '{name}'")
+            except Exception:
+                pass
 
 
-_registry = _ServiceRegistry()
+_svc = _ServiceRegistry()
 
 
 def _install_signal_handlers() -> None:
-    def _on_signal(sig, frame):
-        info(f"Received signal {sig} — shutting down all services...")
-        _registry.shutdown_all()
+    def _handle(sig, _):
+        log_info(f"Signal {sig} — shutting down services...")
+        _svc.shutdown()
         sys.exit(0)
+    signal.signal(signal.SIGINT, _handle)
+    signal.signal(signal.SIGTERM, _handle)
 
-    signal.signal(signal.SIGINT, _on_signal)
-    signal.signal(signal.SIGTERM, _on_signal)
+
+def _monitor_loop(interval: float = 10.0) -> None:
+    """Background thread: watch procs, isolate crashes without killing app."""
+    while True:
+        time.sleep(interval)
+        for name, proc in _svc.all_procs().items():
+            rc = proc.poll()
+            if rc is not None:
+                log_warn(f"Service '{name}' exited (code {rc}) — isolated")
+                _svc.fail(name)
+                with _svc._lock:
+                    _svc._procs.pop(name, None)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 1 — Core config loader
+# STEP 1 — Environment check
 # ─────────────────────────────────────────────────────────────────────────────
 
-def step1_core_config(args: argparse.Namespace) -> dict:
-    """Resolve NASTECH_HOME, locate venv, load env file."""
-    boot("Step 1: Core config loader")
+def step1_environment(args: argparse.Namespace) -> dict:
+    """
+    Check Python version, detect OS/platform, activate venv.
+    Hard-fails on Python < 3.11.
+    """
+    log_boot("Step 1: Environment check")
 
-    nastech_home = Path(os.environ.get("NASTECH_HOME", Path.home() / ".nastech"))
+    # Python version guard
+    if sys.version_info < (3, 11):
+        log_err(
+            f"NasTech requires Python 3.11+. "
+            f"Running {sys.version_info.major}.{sys.version_info.minor}."
+        )
+        log_err("On NasUX: pkg install python   |   Desktop: python.org")
+        sys.exit(1)
+
+    log_boot(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+
+    # Platform detection
+    try:
+        from nastech_constants import get_environment_type, is_nasux
+        env_type = get_environment_type()
+        on_nasux = is_nasux()
+    except ImportError:
+        env_type = "linux" if sys.platform.startswith("linux") else sys.platform
+        on_nasux = bool(os.environ.get("NASUX_VERSION"))
+
+    log_boot(f"Platform: {env_type} | NasUX: {on_nasux}")
+
+    # NASTECH_HOME
+    nastech_home = Path(
+        os.environ.get("NASTECH_HOME", str(Path.home() / ".nastech"))
+    )
     nastech_home.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("NASTECH_HOME", str(nastech_home))
 
-    env_file = nastech_home / ".env"
-    if env_file.exists():
-        _load_dotenv(env_file)
-        boot(f"Loaded .env from {env_file}")
-    else:
-        warn(f"No .env at {env_file} — AI provider keys not set")
-        warn("Run  nastech setup  to configure your AI provider")
+    # Activate venv (if not already inside one)
+    venv_path = _activate_venv()
 
-    # Locate and activate venv
-    venv_activated = _activate_venv()
-    if not venv_activated:
-        warn("No venv found — running without isolated Python environment")
+    if args.debug:
+        os.environ["NASTECH_DEBUG"] = "1"
+        os.environ["NASTECH_LOG_LEVEL"] = "DEBUG"
 
-    ok("Core config loaded")
+    log_ok(f"Environment: {env_type} | NASTECH_HOME: {nastech_home}")
     return {
         "nastech_home": nastech_home,
-        "env_file": env_file,
-        "venv_ok": venv_activated,
+        "env_type": env_type,
+        "on_nasux": on_nasux,
+        "venv": venv_path,
     }
 
 
-def _load_dotenv(path: Path) -> None:
-    """Minimal dotenv loader — no external deps."""
-    try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            key = key.strip()
-            val = val.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = val
-    except Exception as exc:
-        warn(f"Could not load .env: {exc}")
+def _activate_venv() -> Optional[Path]:
+    """Find and activate the first usable venv. Returns its path or None."""
+    if os.environ.get("VIRTUAL_ENV"):
+        log_boot("Already in a venv — skipping activation")
+        return Path(os.environ["VIRTUAL_ENV"])
 
-
-def _activate_venv() -> bool:
+    nastech_home = Path(os.environ.get("NASTECH_HOME", Path.home() / ".nastech"))
     candidates = [
-        Path.home() / ".nastech" / "NasTech-Agent" / "venv",
+        nastech_home / "NasTech-Agent" / "venv",
         AGENT_ROOT / ".venv",
         AGENT_ROOT / "venv",
     ]
     for venv_dir in candidates:
-        lib_base = venv_dir / "lib"
-        if not lib_base.exists():
+        lib = venv_dir / "lib"
+        if not lib.is_dir():
             continue
-        for child in lib_base.iterdir():
-            if child.name.startswith("python3"):
+        for child in lib.iterdir():
+            if child.name.startswith("python"):
                 site = child / "site-packages"
                 if site.is_dir():
                     if str(site) not in sys.path:
@@ -214,18 +231,108 @@ def _activate_venv() -> bool:
                     venv_bin = str(venv_dir / "bin")
                     os.environ["VIRTUAL_ENV"] = str(venv_dir)
                     os.environ["PATH"] = venv_bin + os.pathsep + os.environ.get("PATH", "")
-                    boot(f"Activated venv at {venv_dir}")
-                    return True
-    return False
+                    log_boot(f"Activated venv: {venv_dir}")
+                    return venv_dir
+    log_boot("No venv found — using system Python")
+    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 2 — Logger system
+# STEP 2 — Dependency check & install (self-healing)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def step2_logger(args: argparse.Namespace, cfg: dict) -> None:
-    """Initialize the NasTech logging subsystem."""
-    boot("Step 2: Logger system")
+def step2_dependencies(args: argparse.Namespace, cfg: dict) -> bool:
+    """
+    Use nastech_deps.DependencyManager for fully automatic dependency healing.
+    - Only installs when packages are missing or first run
+    - Offline safe: skips installs if no network
+    - Retries once per package on failure
+    """
+    log_boot("Step 2: Dependency check & install")
+
+    try:
+        from nastech_deps import DependencyManager
+        dm = DependencyManager(
+            debug=args.debug,
+            nastech_home=cfg["nastech_home"],
+            agent_root=AGENT_ROOT,
+        )
+        ok = dm.run_boot_check()
+        if ok:
+            log_ok("Dependencies satisfied")
+        else:
+            log_warn("Some dependencies missing — limited functionality")
+        return ok
+    except ImportError:
+        log_warn("nastech_deps not available — skipping dependency check")
+        return True
+    except Exception as exc:
+        log_warn(f"Dependency check failed: {exc} — continuing")
+        if args.debug:
+            import traceback; traceback.print_exc(file=sys.stderr)
+        return True  # non-fatal
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 3 — Config loader
+# ─────────────────────────────────────────────────────────────────────────────
+
+def step3_config(args: argparse.Namespace, cfg: dict) -> dict:
+    """Load .env, config.yaml, and runtime constants."""
+    log_boot("Step 3: Config loader")
+
+    nastech_home: Path = cfg["nastech_home"]
+    env_file = nastech_home / ".env"
+
+    # Load .env
+    if env_file.exists():
+        _load_dotenv_simple(env_file)
+        log_boot(f"Loaded .env from {env_file}")
+    else:
+        log_warn(f"No .env at {env_file} — run  nastech setup  to configure")
+
+    # Try nastech_cli config loader (best-effort)
+    try:
+        from nastech_cli.env_loader import load_nastech_dotenv
+        load_nastech_dotenv(nastech_home=nastech_home)
+        log_boot("nastech_cli env_loader ran successfully")
+    except ImportError:
+        pass
+    except Exception as exc:
+        log_boot(f"env_loader non-fatal: {exc}")
+
+    # Expose web_dist for backend
+    web_dist = AGENT_ROOT / "nastech_cli" / "web_dist"
+    if web_dist.is_dir():
+        os.environ.setdefault("NASTECH_WEB_DIST", str(web_dist))
+
+    log_ok(f"Config loaded (NASTECH_HOME={nastech_home})")
+    return {**cfg, "env_file": env_file}
+
+
+def _load_dotenv_simple(path: Path) -> None:
+    """Zero-dependency .env parser."""
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = val
+    except Exception as exc:
+        log_warn(f"Could not read .env: {exc}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 4 — Logger init
+# ─────────────────────────────────────────────────────────────────────────────
+
+def step4_logger(args: argparse.Namespace, cfg: dict) -> None:
+    """Initialize the NasTech structured logging system."""
+    log_boot("Step 4: Logger init")
 
     log_level = "DEBUG" if args.debug else os.environ.get("NASTECH_LOG_LEVEL", "INFO")
 
@@ -236,103 +343,127 @@ def step2_logger(args: argparse.Namespace, cfg: dict) -> None:
             log_level=log_level,
             mode="cli",
         )
-        ok(f"Logger initialized (level={log_level}, dir={log_dir})")
+        log_ok(f"Logger ready (level={log_level}, dir={log_dir})")
     except ImportError:
-        # nastech_logging is in the project root — try a basic fallback
         import logging
         logging.basicConfig(
             level=getattr(logging, log_level, logging.INFO),
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             stream=sys.stderr,
         )
-        boot("Using stdlib logging fallback (nastech_logging unavailable)")
-        ok(f"Logger initialized (fallback, level={log_level})")
+        log_boot("Logger: stdlib fallback (nastech_logging not available)")
     except Exception as exc:
-        warn(f"Logger setup failed: {exc} — using print fallback")
+        log_warn(f"Logger init failed: {exc} — using print fallback")
+
+    if args.debug:
+        try:
+            from nastech_logging import setup_verbose_logging
+            setup_verbose_logging()
+            log_boot("Verbose logging enabled")
+        except Exception:
+            pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 3 — AI engine
+# STEP 5 — AI engine startup
 # ─────────────────────────────────────────────────────────────────────────────
 
-def step3_ai_engine(args: argparse.Namespace, cfg: dict) -> Optional[object]:
-    """Import and validate the AI engine (nastech_cli)."""
-    boot("Step 3: AI engine")
+def step5_ai_engine(args: argparse.Namespace) -> Optional[object]:
+    """
+    Import and validate nastech_cli (the AI engine).
+    Returns the module on success, None on failure (non-fatal).
+    """
+    log_boot("Step 5: AI engine startup")
 
     try:
-        boot("Importing nastech_cli...")
-        import nastech_cli  # noqa: F401
+        import nastech_cli
         version = getattr(nastech_cli, "__version__", "unknown")
-        ok(f"AI engine loaded (nastech_cli {version})")
+        log_ok(f"AI engine loaded (nastech_cli {version})")
         return nastech_cli
     except ModuleNotFoundError:
-        warn("nastech_cli not installed — AI features unavailable")
-        warn(f"Install with:  bash {AGENT_ROOT}/install.sh")
+        log_warn("nastech_cli not installed — AI features unavailable")
+        log_warn(f"Run:  bash {AGENT_ROOT}/install.sh")
+        _svc.fail("ai-engine")
         return None
     except Exception as exc:
-        err(f"AI engine failed to load: {exc}")
+        log_err(f"AI engine failed to import: {exc}")
         if args.debug:
-            import traceback
-            traceback.print_exc()
-        _registry.mark_failed("ai-engine")
+            import traceback; traceback.print_exc(file=sys.stderr)
+        _svc.fail("ai-engine")
         return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 4 — Command registry
+# STEP 6 — Command registry load
 # ─────────────────────────────────────────────────────────────────────────────
 
-def step4_command_registry(args: argparse.Namespace, nastech_cli_mod) -> int:
-    """Count and validate registered CLI commands."""
-    boot("Step 4: Command registry")
+def step6_commands(args: argparse.Namespace, nastech_mod) -> int:
+    """
+    Enumerate all registered CLI commands (130+).
+    Returns the count; -1 if enumeration failed (non-fatal).
+    """
+    log_boot("Step 6: Command registry load")
 
-    if nastech_cli_mod is None:
-        warn("Skipping command registry (AI engine not loaded)")
+    if nastech_mod is None:
+        log_warn("Skipping command registry (AI engine not available)")
         return 0
 
     try:
-        # Try to enumerate commands via Click group introspection
-        from nastech_cli.main import main as _main_fn
-        import click
+        from nastech_cli.main import main as cli_main
+        # Click group introspection
+        commands = getattr(cli_main, "commands", None)
+        if commands is None:
+            # Some Click versions expose commands differently
+            import click
+            ctx = click.Context(cli_main, info_name="nastech")
+            commands = cli_main.list_commands(ctx)
 
-        ctx = click.Context(_main_fn)
-        commands = getattr(_main_fn, "commands", {}) or {}
-        count = len(commands)
-
-        if count > 0:
-            ok(f"Command registry loaded ({count} commands)")
-            if args.debug:
-                for name in sorted(commands.keys()):
-                    boot(f"  command: {name}")
-        else:
-            ok("Command registry loaded (commands enumerated at runtime)")
+        count = len(commands) if hasattr(commands, "__len__") else sum(1 for _ in commands)
+        log_ok(f"Command registry loaded ({count} commands)")
+        if args.debug:
+            cmd_list = list(commands.keys()) if isinstance(commands, dict) else list(commands)
+            for name in sorted(cmd_list[:30]):  # first 30 in debug
+                log_boot(f"  cmd: {name}")
+            if len(cmd_list) > 30:
+                log_boot(f"  ... and {len(cmd_list) - 30} more")
         return count
     except Exception as exc:
-        boot(f"Could not enumerate commands: {exc}")
-        ok("Command registry loaded (runtime enumeration)")
+        log_boot(f"Command enumeration non-fatal: {exc}")
+        log_ok("Command registry loaded (runtime enumeration)")
         return -1
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 5 — Gateway services
+# STEP 7 — Gateway services start
 # ─────────────────────────────────────────────────────────────────────────────
 
-def step5_gateway(args: argparse.Namespace, cfg: dict) -> bool:
-    """Start the backend gateway/dashboard service."""
+def step7_gateway(args: argparse.Namespace, cfg: dict) -> bool:
+    """
+    Start the backend dashboard gateway on port 9119.
+    Health-checks up to 8 s before declaring ready.
+    Failure is isolated — app continues without gateway.
+    """
     if args.no_gateway:
-        info("Skipping gateway (--no-gateway)")
+        log_info("Gateway skipped (--no-gateway)")
         return False
 
-    boot("Step 5: Gateway services — backend on port 9119")
+    log_boot("Step 7: Gateway services start")
 
-    env = {**os.environ, "NASTECH_HOME": str(cfg["nastech_home"])}
+    # Check nastech_cli is importable before launching subprocess
+    try:
+        import nastech_cli  # noqa: F401
+    except ImportError:
+        log_warn("nastech_cli not installed — gateway not started")
+        _svc.fail("gateway")
+        return False
+
+    env = {
+        **os.environ,
+        "NASTECH_HOME": str(cfg["nastech_home"]),
+    }
     if args.debug:
         env["NASTECH_DEBUG"] = "1"
         env["NASTECH_LOG_LEVEL"] = "DEBUG"
-
-    web_dist = AGENT_ROOT / "nastech_cli" / "web_dist"
-    if web_dist.is_dir():
-        env["NASTECH_WEB_DIST"] = str(web_dist)
 
     cmd = [
         sys.executable, "-m", "nastech_cli.main",
@@ -345,31 +476,27 @@ def step5_gateway(args: argparse.Namespace, cfg: dict) -> bool:
             cmd,
             env=env,
             stdout=subprocess.DEVNULL if not args.debug else None,
-            stderr=subprocess.PIPE if not args.debug else None,
+            stderr=subprocess.PIPE  if not args.debug else None,
         )
-        _registry.register_proc("gateway-backend", proc)
-        boot(f"Backend process started (PID {proc.pid})")
+        _svc.add("gateway", proc)
     except FileNotFoundError:
-        warn("nastech_cli.main not found — backend gateway not started")
-        warn(f"Install with:  bash {AGENT_ROOT}/install.sh")
-        _registry.mark_failed("gateway-backend")
+        log_warn(f"Could not start gateway: nastech_cli.main not found")
+        _svc.fail("gateway")
         return False
     except Exception as exc:
-        err(f"Failed to start backend gateway: {exc}")
-        _registry.mark_failed("gateway-backend")
+        log_warn(f"Gateway start error: {exc}")
+        _svc.fail("gateway")
         return False
 
-    # Health-check loop — wait up to 8s for backend to be ready
+    # Wait up to 8 s for the process to come alive / not immediately crash
     import urllib.request
-    import urllib.error
-
     deadline = time.monotonic() + 8.0
     ready = False
     while time.monotonic() < deadline:
         time.sleep(0.4)
         if proc.poll() is not None:
-            err(f"Backend exited with code {proc.returncode} — check logs at ~/.nastech/logs/")
-            _registry.mark_failed("gateway-backend")
+            log_err(f"Gateway exited early (code {proc.returncode}) — check ~/.nastech/logs/")
+            _svc.fail("gateway")
             return False
         try:
             urllib.request.urlopen("http://127.0.0.1:9119/health", timeout=1)
@@ -379,236 +506,223 @@ def step5_gateway(args: argparse.Namespace, cfg: dict) -> bool:
             pass
 
     if ready:
-        ok("Gateway backend ready on http://127.0.0.1:9119")
+        log_ok("Gateway ready on http://127.0.0.1:9119")
+    elif proc.poll() is None:
+        # Still running — acceptable (no /health endpoint)
+        log_ok(f"Gateway started (PID {proc.pid}) on http://127.0.0.1:9119")
+        ready = True
     else:
-        # Still running but /health didn't respond — could be OK (no /health endpoint)
-        if proc.poll() is None:
-            ok("Gateway backend started (PID %d) on http://127.0.0.1:9119" % proc.pid)
-        else:
-            warn("Gateway backend may not have started — check ~/.nastech/logs/errors.log")
-            return False
+        log_warn("Gateway may not have started — logs: ~/.nastech/logs/errors.log")
+        _svc.fail("gateway")
 
-    return True
+    return ready
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STEP 6 — UI (Vite frontend)
-# ─────────────────────────────────────────────────────────────────────────────
+def _start_optional_runner(args: argparse.Namespace) -> None:
+    """Start GitHub Actions self-hosted runner if present (best-effort)."""
+    runner_dir = AGENT_ROOT / "actions-runner"
+    run_sh = runner_dir / "run.sh"
+    if not run_sh.exists():
+        return
 
-def step6_ui(args: argparse.Namespace) -> bool:
-    """Start the Vite frontend dev server if web/ directory exists."""
+    log_boot("Starting GitHub Actions runner...")
+    env = {
+        **os.environ,
+        "RUNNER_ALLOW_RUNASROOT": "1",
+        "LD_LIBRARY_PATH": "/home/runner/.nix-profile/lib:" + os.environ.get("LD_LIBRARY_PATH", ""),
+    }
+    try:
+        proc = subprocess.Popen(
+            ["/bin/bash", str(run_sh)],
+            cwd=str(runner_dir),
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        _svc.add("actions-runner", proc)
+        log_ok(f"Actions runner started (PID {proc.pid})")
+    except Exception as exc:
+        log_warn(f"Actions runner not started: {exc}")
+
+
+def _start_optional_ui(args: argparse.Namespace) -> bool:
+    """Start Vite frontend if web/ exists. Returns True if started."""
     if args.no_ui:
-        info("Skipping UI (--no-ui)")
         return False
-
     web_dir = AGENT_ROOT / "web"
     if not web_dir.is_dir():
-        boot("No web/ directory — skipping UI step")
         return False
-
-    boot("Step 6: UI — Vite dev server on port 5000")
 
     node_modules = AGENT_ROOT / "node_modules"
     vite_bin = node_modules / ".bin" / "vite"
 
     if not vite_bin.exists():
-        warn("node_modules not found — running npm install for frontend...")
-        try:
-            subprocess.run(
-                ["npm", "install"],
-                cwd=str(AGENT_ROOT),
-                check=True,
-                capture_output=not args.debug,
-            )
-        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-            warn(f"npm install failed: {exc} — skipping UI")
-            return False
+        log_warn("Vite not found — skipping frontend (run npm install manually)")
+        return False
 
+    log_boot("Starting Vite frontend on port 5000...")
     try:
         proc = subprocess.Popen(
             ["node", str(vite_bin), "--host", "0.0.0.0", "--port", "5000"],
             cwd=str(web_dir),
             stdout=subprocess.DEVNULL if not args.debug else None,
         )
-        _registry.register_proc("vite-frontend", proc)
-        ok("Vite frontend started on http://0.0.0.0:5000")
+        _svc.add("vite-frontend", proc)
+        log_ok("Frontend started on http://0.0.0.0:5000")
         return True
     except Exception as exc:
-        warn(f"Could not start Vite frontend: {exc}")
-        _registry.mark_failed("vite-frontend")
+        log_warn(f"Frontend not started: {exc}")
         return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Auto-recovery monitor
+# STEP 8 — READY state
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _monitor_services(interval: float = 10.0) -> None:
-    """Background thread: watch registered processes and log crashes."""
-    while True:
-        time.sleep(interval)
-        with _registry._lock:
-            procs = dict(_registry._procs)
-        for name, proc in procs.items():
-            rc = proc.poll()
-            if rc is not None:
-                warn(f"Service '{name}' exited with code {rc} — isolating failure")
-                _registry.mark_failed(name)
-                with _registry._lock:
-                    _registry._procs.pop(name, None)
+def step8_ready(args: argparse.Namespace, cfg: dict, cmd_count: int) -> None:
+    """Print the READY banner and wait on background services."""
+    elapsed = time.monotonic() - _boot_start
+    failed  = _svc.failed()
+    procs   = _svc.all_procs()
+
+    print(f"\n{BLD}{GRN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}", file=sys.stderr)
+    print(f"{BLD}{GRN}  [OK] NasUX Ready  (boot: {elapsed:.2f}s){NC}", file=sys.stderr)
+    print(f"{BLD}{GRN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}", file=sys.stderr)
+
+    if "gateway" in procs:
+        print(f"  Dashboard:  {CYN}http://127.0.0.1:9119{NC}", file=sys.stderr)
+    if "vite-frontend" in procs:
+        print(f"  Frontend:   {CYN}http://0.0.0.0:5000{NC}", file=sys.stderr)
+    if cmd_count and cmd_count > 0:
+        print(f"  Commands:   {CYN}{cmd_count} registered{NC}", file=sys.stderr)
+    print(f"  CLI:        {CYN}nastech --help{NC}", file=sys.stderr)
+    if failed:
+        print(f"  {YEL}Issues:     {', '.join(failed)} (isolated){NC}", file=sys.stderr)
+    if args.debug:
+        print(f"  {YEL}Debug mode: ON{NC}", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    # Wait on all background processes
+    if procs:
+        log_info(f"Serving ({len(procs)} service(s)) — Ctrl+C to stop")
+        try:
+            while True:
+                if all(p.poll() is not None for p in procs.values()):
+                    log_warn("All services have exited")
+                    break
+                time.sleep(1)
+        except KeyboardInterrupt:
+            log_info("Shutdown requested")
+    else:
+        log_info("No background services — use  nastech  to interact")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CLI argument parser
+# Argument parser
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _parse_args(argv=None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
+    p = argparse.ArgumentParser(
         prog="nastech-launcher",
         description="NasTech Agent boot launcher — NasUX / Powered by NasTech AI",
     )
-    parser.add_argument(
-        "--debug", "--verbose", "-v",
-        action="store_true",
-        dest="debug",
-        help="Enable verbose boot and debug logging",
-    )
-    parser.add_argument(
-        "--no-ui",
-        action="store_true",
-        dest="no_ui",
-        help="Skip the Vite frontend",
-    )
-    parser.add_argument(
-        "--no-gateway",
-        action="store_true",
-        dest="no_gateway",
-        help="Skip the backend gateway/dashboard service",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Validate all services can be imported/found, then exit (no services started)",
-    )
-    return parser.parse_args(argv)
+    p.add_argument("--debug", "--verbose", "-v",
+                   action="store_true", dest="debug",
+                   help="Verbose boot + debug logging")
+    p.add_argument("--no-ui",
+                   action="store_true", dest="no_ui",
+                   help="Skip Vite frontend")
+    p.add_argument("--no-gateway",
+                   action="store_true", dest="no_gateway",
+                   help="Skip backend gateway")
+    p.add_argument("--check",
+                   action="store_true",
+                   help="Validate environment + deps then exit (no services started)")
+    return p.parse_args(argv)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Main boot orchestrator
+# Main orchestrator
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main(argv=None) -> int:
     args = _parse_args(argv)
+
     global _debug_mode
     _debug_mode = args.debug
 
-    if args.debug:
-        os.environ.setdefault("NASTECH_DEBUG", "1")
-        os.environ.setdefault("NASTECH_LOG_LEVEL", "DEBUG")
-
     _install_signal_handlers()
 
-    print(f"\n{BOLD}{CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}", file=sys.stderr)
-    print(f"{BOLD}{CYAN}  NasUX — Powered by NasTech AI{NC}", file=sys.stderr)
-    print(f"{BOLD}{CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}\n", file=sys.stderr)
+    print(f"\n{BLD}{CYN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}", file=sys.stderr)
+    print(f"{BLD}{CYN}  NasUX — Powered by NasTech AI{NC}", file=sys.stderr)
+    print(f"{BLD}{CYN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}\n", file=sys.stderr)
 
-    boot("Boot sequence starting...")
-
-    # ── STEP 1: Core config ──────────────────────────────────────────────────
+    # ── STEP 1: Environment ──────────────────────────────────────────────────
     try:
-        cfg = step1_core_config(args)
+        cfg = step1_environment(args)
+    except SystemExit:
+        raise
     except Exception as exc:
-        err(f"[STEP 1] Core config failed: {exc}")
-        if args.debug:
-            import traceback; traceback.print_exc()
+        log_err(f"[STEP 1] Environment check failed: {exc}")
         return 1
 
-    # ── STEP 2: Logger ───────────────────────────────────────────────────────
+    # ── STEP 2: Dependencies ─────────────────────────────────────────────────
     try:
-        step2_logger(args, cfg)
+        step2_dependencies(args, cfg)
     except Exception as exc:
-        warn(f"[STEP 2] Logger setup failed: {exc} — continuing with print fallback")
+        log_warn(f"[STEP 2] Dependency check error: {exc} — continuing")
 
-    # ── STEP 3: AI engine ────────────────────────────────────────────────────
+    # ── STEP 3: Config ───────────────────────────────────────────────────────
     try:
-        nastech_cli_mod = step3_ai_engine(args, cfg)
+        cfg = step3_config(args, cfg)
     except Exception as exc:
-        err(f"[STEP 3] AI engine failed: {exc}")
-        nastech_cli_mod = None
+        log_warn(f"[STEP 3] Config error: {exc} — using defaults")
 
-    # ── STEP 4: Command registry ─────────────────────────────────────────────
+    # ── STEP 4: Logger ───────────────────────────────────────────────────────
     try:
-        cmd_count = step4_command_registry(args, nastech_cli_mod)
+        step4_logger(args, cfg)
     except Exception as exc:
-        warn(f"[STEP 4] Command registry check failed: {exc}")
-        cmd_count = 0
+        log_warn(f"[STEP 4] Logger error: {exc}")
 
+    # ── STEP 5: AI engine ────────────────────────────────────────────────────
+    nastech_mod = None
+    try:
+        nastech_mod = step5_ai_engine(args)
+    except Exception as exc:
+        log_warn(f"[STEP 5] AI engine error: {exc}")
+
+    # ── STEP 6: Command registry ─────────────────────────────────────────────
+    cmd_count = 0
+    try:
+        cmd_count = step6_commands(args, nastech_mod)
+    except Exception as exc:
+        log_warn(f"[STEP 6] Command registry error: {exc}")
+
+    # ── Check mode exits here ────────────────────────────────────────────────
     if args.check:
-        failed = _registry.failed_services()
+        failed = _svc.failed()
         if failed:
-            err(f"Check failed — services with errors: {', '.join(failed)}")
+            log_err(f"Issues: {', '.join(failed)}")
             return 1
-        ok("All checks passed")
+        log_ok("All checks passed — NasTech is healthy")
         return 0
 
-    # ── STEP 5: Gateway ──────────────────────────────────────────────────────
-    gateway_ok = False
+    # ── STEP 7: Gateway services ─────────────────────────────────────────────
     try:
-        gateway_ok = step5_gateway(args, cfg)
+        step7_gateway(args, cfg)
+        _start_optional_runner(args)
+        _start_optional_ui(args)
     except Exception as exc:
-        warn(f"[STEP 5] Gateway service error: {exc} — continuing without gateway")
+        log_warn(f"[STEP 7] Gateway error: {exc} — continuing without services")
 
-    # ── STEP 6: UI ───────────────────────────────────────────────────────────
-    ui_ok = False
-    try:
-        ui_ok = step6_ui(args)
-    except Exception as exc:
-        warn(f"[STEP 6] UI service error: {exc} — continuing without UI")
+    # ── Start monitor thread ─────────────────────────────────────────────────
+    threading.Thread(target=_monitor_loop, daemon=True).start()
 
-    # ── Start service monitor thread ─────────────────────────────────────────
-    monitor_t = threading.Thread(target=_monitor_services, daemon=True)
-    monitor_t.start()
+    # ── STEP 8: READY ────────────────────────────────────────────────────────
+    step8_ready(args, cfg, cmd_count)
 
-    # ── READY ─────────────────────────────────────────────────────────────────
-    elapsed = time.monotonic() - _boot_start
-    failed = _registry.failed_services()
-
-    print(f"\n{BOLD}{GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}", file=sys.stderr)
-    print(f"{BOLD}{GREEN}  [OK] NasUX Ready  (boot: {elapsed:.2f}s){NC}", file=sys.stderr)
-    print(f"{BOLD}{GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}", file=sys.stderr)
-
-    if gateway_ok:
-        print(f"  Dashboard:  {CYAN}http://127.0.0.1:9119{NC}", file=sys.stderr)
-    if ui_ok:
-        print(f"  Frontend:   {CYAN}http://0.0.0.0:5000{NC}", file=sys.stderr)
-    if cmd_count and cmd_count > 0:
-        print(f"  Commands:   {CYAN}{cmd_count} registered{NC}", file=sys.stderr)
-    print(f"  CLI:        {CYAN}nastech --help{NC}", file=sys.stderr)
-    if failed:
-        print(f"  {YELLOW}Failed:     {', '.join(failed)}{NC}", file=sys.stderr)
-    if args.debug:
-        print(f"  {YELLOW}Debug mode: ON{NC}", file=sys.stderr)
-    print("", file=sys.stderr)
-
-    # ── Wait on background services ───────────────────────────────────────────
-    with _registry._lock:
-        procs = dict(_registry._procs)
-
-    if procs:
-        info(f"Waiting on {len(procs)} service(s) — press Ctrl+C to stop")
-        try:
-            while True:
-                # Check all processes are still alive
-                all_done = all(p.poll() is not None for p in procs.values())
-                if all_done:
-                    break
-                time.sleep(1)
-        except KeyboardInterrupt:
-            info("Shutting down...")
-    else:
-        info("No background services running. Use  nastech  to interact.")
-
-    return 0 if not failed else 1
+    failed = _svc.failed()
+    return 1 if ("ai-engine" in failed) else 0
 
 
 if __name__ == "__main__":
