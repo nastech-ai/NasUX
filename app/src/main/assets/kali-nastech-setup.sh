@@ -248,6 +248,23 @@ BASHRCEOF
 fi
 
 # =============================================================================
+# Step 6: Fonts — Source Code Pro + all programming fonts
+# =============================================================================
+step "Step 6/6: Fonts (Source Code Pro + All)"
+
+FONTS_SCRIPT="${HOME:-/root}/nastech-agent/kali-fonts.sh"
+if [ -f "$FONTS_SCRIPT" ]; then
+    info "Running font installer..."
+    bash "$FONTS_SCRIPT" 2>&1 | tee -a "$LOG_FILE" && ok "All fonts installed" || warn "Font installer had warnings (non-fatal)"
+else
+    warn "kali-fonts.sh not found — installing essential fonts only"
+    apt-get install -y --no-install-recommends \
+        fonts-hack fonts-firacode fonts-noto-mono fonts-inconsolata \
+        fonts-dejavu fonts-liberation wget unzip fontconfig 2>/dev/null | tail -3 | tee -a "$LOG_FILE"
+    fc-cache -fv 2>/dev/null && ok "Essential fonts installed"
+fi
+
+# =============================================================================
 # Done
 # =============================================================================
 echo ""
