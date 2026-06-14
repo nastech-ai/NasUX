@@ -164,9 +164,12 @@ final class NasUXInstaller {
                                 BufferedReader symlinksReader = new BufferedReader(new InputStreamReader(zipInput));
                                 String line;
                                 while ((line = symlinksReader.readLine()) != null) {
+                                    if (line.trim().isEmpty()) continue;
                                     String[] parts = line.split("←");
-                                    if (parts.length != 2)
-                                        throw new RuntimeException("Malformed symlink line: " + line);
+                                    if (parts.length != 2) {
+                                        Logger.logWarn(LOG_TAG, "Skipping malformed symlink line: " + line);
+                                        continue;
+                                    }
                                     // Rewrite any absolute paths in SYMLINKS.txt to the NasUX package prefix.
                                     // Bootstrap ZIPs patched by scripts/patch-bootstrap.py already contain
                                     // NasUX paths, but this guard handles any future unpatched ZIPs.
@@ -200,20 +203,29 @@ final class NasUXInstaller {
                                         while ((readBytes = zipInput.read(buffer)) != -1)
                                             outStream.write(buffer, 0, readBytes);
                                     }
-                                    if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
-                                        zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods")) {
+                                    if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("usr/bin/") ||
+                                        zipEntryName.startsWith("libexec/") || zipEntryName.startsWith("usr/libexec/") ||
+                                        zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods") ||
+                                        zipEntryName.startsWith("usr/lib/apt/apt-helper") || zipEntryName.startsWith("usr/lib/apt/methods") ||
+                                        zipEntryName.startsWith("lib/termux-exec") || zipEntryName.startsWith("lib/nasux-exec")) {
                                         //noinspection OctalInteger
-                                        Os.chmod(targetFile.getAbsolutePath(), 0700);
+                                        Os.chmod(targetFile.getAbsolutePath(), 0755);
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (symlinks.isEmpty())
-                        throw new RuntimeException("No SYMLINKS.txt encountered");
-                    for (Pair<String, String> symlink : symlinks) {
-                        Os.symlink(symlink.first, symlink.second);
+                    if (symlinks.isEmpty()) {
+                        Logger.logWarn(LOG_TAG, "No SYMLINKS.txt encountered in bootstrap ZIP — skipping symlink creation.");
+                    } else {
+                        for (Pair<String, String> symlink : symlinks) {
+                            try {
+                                Os.symlink(symlink.first, symlink.second);
+                            } catch (Exception symlinkError) {
+                                Logger.logWarn(LOG_TAG, "Skipping symlink " + symlink.second + " → " + symlink.first + ": " + symlinkError.getMessage());
+                            }
+                        }
                     }
 
                     Logger.logInfo(LOG_TAG, "Moving nasux prefix staging to prefix directory.");
@@ -223,6 +235,21 @@ final class NasUXInstaller {
                     }
 
                     Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
+
+                    // Post-rename: ensure all binaries under bin/ have execute permission.
+                    // This covers cases where chmod was skipped during extraction (e.g. login, sh, bash).
+                    String[] execDirs = { "/bin", "/usr/bin", "/libexec", "/usr/libexec" };
+                    for (String execDir : execDirs) {
+                        File dir = new File(NASUX_PREFIX_DIR_PATH + execDir);
+                        if (!dir.isDirectory()) continue;
+                        File[] files = dir.listFiles();
+                        if (files == null) continue;
+                        for (File f : files) {
+                            if (f.isFile()) {
+                                try { Os.chmod(f.getAbsolutePath(), 0755); } catch (Exception ignored) {}
+                            }
+                        }
+                    }
 
                     // Recreate env file since nasux prefix was wiped earlier
                     NasUXShellEnvironment.writeEnvironmentToFile(activity);
@@ -426,11 +453,24 @@ final class NasUXInstaller {
      */
     private static void installNasTechAgent(final Context context) {
         try {
+            // Ensure the NasUX home directory itself exists before placing anything inside it
+            File homeDir = new File(NasUXConstants.NASUX_HOME_DIR_PATH);
+            if (!homeDir.exists()) homeDir.mkdirs();
+
             String agentDestDir = NasUXConstants.NASUX_HOME_DIR_PATH + "/nastech-agent";
             File destDir = new File(agentDestDir);
-            if (destDir.exists()) {
+            File startScript = new File(agentDestDir, "start.sh");
+
+            // Only skip if the directory exists AND start.sh is a non-empty file —
+            // this prevents the "empty-dir" trap where a failed previous install left
+            // an empty nastech-agent/ directory causing us to silently skip reinstall.
+            if (destDir.exists() && startScript.exists() && startScript.length() > 0) {
                 Logger.logInfo(LOG_TAG, "NasTech Agent already installed at " + agentDestDir);
                 return;
+            }
+
+            if (destDir.exists()) {
+                Logger.logInfo(LOG_TAG, "NasTech Agent dir exists but start.sh missing — reinstalling.");
             }
             destDir.mkdirs();
 

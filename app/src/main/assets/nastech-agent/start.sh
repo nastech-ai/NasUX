@@ -18,7 +18,7 @@
 #   ./start.sh --no-runner  — skip GitHub Actions self-hosted runner
 # ============================================================================
 
-set -uo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
