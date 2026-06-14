@@ -470,12 +470,14 @@ final class NasUXInstaller {
             } catch (Exception ignored) {}
 
             // Make key scripts executable
-            File installScript = new File(agentDestDir, "install.sh");
-            if (installScript.exists()) installScript.setExecutable(true, false);
-            File startScript = new File(agentDestDir, "start.sh");
-            if (startScript.exists()) startScript.setExecutable(true, false);
-            File nastechCli = new File(agentDestDir, "nastech");
-            if (nastechCli.exists()) nastechCli.setExecutable(true, false);
+            String[] executableFiles = {
+                "install.sh", "start.sh", "nastech",
+                "nastech_launcher.py"
+            };
+            for (String fname : executableFiles) {
+                File f = new File(agentDestDir, fname);
+                if (f.exists()) f.setExecutable(true, false);
+            }
 
             Logger.logInfo(LOG_TAG, "NasTech Agent installed successfully at " + agentDestDir);
         } catch (Exception e) {

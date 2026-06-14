@@ -268,17 +268,37 @@ BIN_DISPLAY="$(get_command_link_display_dir)"
 
 mkdir -p "$BIN_DIR"
 
-# Create wrapper script
+# ── Locate the agent directory so our improved wrapper can be used ────────────
+AGENT_DIR="$SCRIPT_DIR"
+
+# Create wrapper script — routes through the NasUX launcher for boot
+# logging, error handling, --debug support, and venv auto-detection.
 NASTECH_BIN="$BIN_DIR/nastech"
-cat > "$NASTECH_BIN" << 'BINEOF'
+cat > "$NASTECH_BIN" << BINEOF
 #!/bin/bash
-# NasTech-Agent CLI wrapper
-VENV_DIR="$HOME/.nastech/NasTech-Agent/venv"
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Error: NasTech-Agent not properly installed"
-    exit 1
+# NasTech-Agent CLI wrapper — NasUX / Powered by NasTech AI
+# Routes through the improved nastech launcher for startup stability.
+
+AGENT_DIR="${AGENT_DIR}"
+VENV_DIR="\$HOME/.nastech/NasTech-Agent/venv"
+
+# Activate venv if present
+if [ -f "\$VENV_DIR/bin/activate" ]; then
+    source "\$VENV_DIR/bin/activate" 2>/dev/null || true
 fi
-exec "$VENV_DIR/bin/nastech" "$@"
+
+# Prefer the enhanced Python launcher in the agent directory
+if [ -f "\$AGENT_DIR/nastech" ]; then
+    exec python3 "\$AGENT_DIR/nastech" "\$@"
+fi
+
+# Fall back to venv binary if launcher not found
+if [ -f "\$VENV_DIR/bin/nastech" ]; then
+    exec "\$VENV_DIR/bin/nastech" "\$@"
+fi
+
+echo "[ERROR] NasTech not installed. Run: bash \$AGENT_DIR/install.sh" >&2
+exit 1
 BINEOF
 
 chmod +x "$NASTECH_BIN"
