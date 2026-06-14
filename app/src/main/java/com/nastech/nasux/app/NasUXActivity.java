@@ -197,6 +197,7 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
     private static final int CONTEXT_MENU_HELP_ID = 7;
     private static final int CONTEXT_MENU_SETTINGS_ID = 8;
     private static final int CONTEXT_MENU_REPORT_ID = 9;
+    private static final int CONTEXT_MENU_KALI_SHELL_ID = 12;
 
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
     private static final String ARG_ACTIVITY_RECREATED = "activity_recreated";
@@ -821,6 +822,35 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
     }
 
     /**
+     * Launches a new terminal session running the Kali Linux shell via proot.
+     * If the Kali rootfs is not yet installed, shows a setup dialog instead.
+     */
+    private void launchKaliShell() {
+        java.io.File kaliFs = new java.io.File(
+            com.nastech.nasux.shared.nasux.NasUXConstants.NASUX_HOME_DIR_PATH, "kali-fs");
+        java.io.File kaliBin = new java.io.File(kaliFs, "bin");
+        if (!kaliBin.exists()) {
+            new AlertDialog.Builder(this)
+                .setTitle("Kali Linux Not Installed")
+                .setMessage(
+                    "Kali Linux is not installed yet.\n\n" +
+                    "To install it, run in the terminal:\n\n" +
+                    "  bash ~/nastech-agent/kali-setup.sh\n\n" +
+                    "This downloads the official Kali NetHunter rootfs (~150MB) " +
+                    "and sets up a full Kali environment powered by NasTech AI."
+                )
+                .setPositiveButton("Open Terminal", (d, w) -> {
+                    d.dismiss();
+                    runNasTechCommand("bash ~/nastech-agent/kali-setup.sh\n", "Kali Setup");
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+        } else {
+            runNasTechCommand("kali\n", "Kali Linux");
+        }
+    }
+
+    /**
      * Opens a new named terminal session and runs the given NasTech command in it.
      * The drawer is closed first so the user sees the terminal immediately.
      */
@@ -889,6 +919,7 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
         menu.add(Menu.NONE, CONTEXT_MENU_HELP_ID, Menu.NONE, R.string.action_open_help);
         menu.add(Menu.NONE, CONTEXT_MENU_SETTINGS_ID, Menu.NONE, R.string.action_open_settings);
         menu.add(Menu.NONE, CONTEXT_MENU_REPORT_ID, Menu.NONE, R.string.action_report_issue);
+        menu.add(Menu.NONE, CONTEXT_MENU_KALI_SHELL_ID, Menu.NONE, "Enter Kali Linux");
     }
 
     /** Hook system menu to show context menu instead. */
@@ -938,6 +969,9 @@ public final class NasUXActivity extends AppCompatActivity implements ServiceCon
                 return true;
             case CONTEXT_MENU_REPORT_ID:
                 mNasUXTerminalViewClient.reportIssueFromTranscript();
+                return true;
+            case CONTEXT_MENU_KALI_SHELL_ID:
+                launchKaliShell();
                 return true;
             default:
                 return super.onContextItemSelected(item);

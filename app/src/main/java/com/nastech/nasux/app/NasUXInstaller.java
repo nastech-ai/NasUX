@@ -260,6 +260,9 @@ final class NasUXInstaller {
                     // Permanently install NasTech Agent into the NasUX home directory
                     installNasTechAgent(activity);
 
+                    // Install Kali Linux integration scripts (CLI only, no VNC)
+                    setupKaliEnvironment(activity);
+
                     activity.runOnUiThread(whenDone);
 
                 } catch (final Exception e) {
@@ -415,35 +418,90 @@ final class NasUXInstaller {
     }
 
     /**
-     * Writes the correct APT sources.list so that `pkg install` fetches packages from the right
-     * repository. The bootstrap zip embeds a sources.list pointing at the NasUX APT CDN.
-     * This method overwrites it with the canonical NasUX package mirror and adds a
-     * comment block attributing the source.
+     * Writes APT sources pointing to the official Kali Linux rolling repository.
+     * This replaces any Termux/NasUX CDN sources so that `apt install` inside Kali
+     * always fetches real Kali packages from kali.org.
+     *
+     * Also writes the Kali sources into the Kali rootfs (kali-fs) if it already exists.
      */
     private static void fixPackageSources(final Context context) {
         try {
-            // Primary sources.list
+            // Bootstrap prefix sources.list — point to Kali rolling for the outer layer
             File sourcesFile = new File(NASUX_PREFIX_DIR_PATH + "/etc/apt/sources.list");
             if (!sourcesFile.getParentFile().exists()) sourcesFile.getParentFile().mkdirs();
 
             String sourcesContent =
-                "# NasUX Package Repository — powered by NasTech AI\n" +
-                "# Source: https://github.com/nastech-ai/NasUX-Packages\n" +
-                "deb https://packages-cf.nasux.dev/apt/nasux-main stable main\n";
+                "# Kali Linux Rolling — Official Repository\n" +
+                "# NasUX — Powered by NasTech AI\n" +
+                "deb http://http.kali.org/kali kali-rolling main non-free contrib\n";
 
             try (java.io.FileOutputStream fos = new java.io.FileOutputStream(sourcesFile)) {
                 fos.write(sourcesContent.getBytes("UTF-8"));
             }
             sourcesFile.setReadable(true, false);
-            Logger.logInfo(LOG_TAG, "APT sources.list written: " + sourcesFile.getAbsolutePath());
+            Logger.logInfo(LOG_TAG, "Kali APT sources.list written: " + sourcesFile.getAbsolutePath());
 
-            // sources.list.d directory for future NasUX-specific channels
+            // Also write into the Kali rootfs if it already exists
+            String kaliFsPath = NasUXConstants.NASUX_HOME_DIR_PATH + "/kali-fs/etc/apt";
+            File kaliFsAptDir = new File(kaliFsPath);
+            if (kaliFsAptDir.exists()) {
+                File kaliSourcesFile = new File(kaliFsPath + "/sources.list");
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(kaliSourcesFile)) {
+                    fos.write(sourcesContent.getBytes("UTF-8"));
+                }
+                Logger.logInfo(LOG_TAG, "Kali rootfs APT sources updated: " + kaliSourcesFile.getAbsolutePath());
+            }
+
+            // sources.list.d directory
             File sourcesDir = new File(NASUX_PREFIX_DIR_PATH + "/etc/apt/sources.list.d");
             if (!sourcesDir.exists()) sourcesDir.mkdirs();
 
         } catch (Exception e) {
-            // Non-fatal — pkg will still work with the bootstrap default if this fails
+            // Non-fatal
             Logger.logStackTraceWithMessage(LOG_TAG, "fixPackageSources: could not write sources.list", e);
+        }
+    }
+
+    /**
+     * Copies the Kali Linux integration scripts from app assets into the NasUX home directory
+     * so they are ready to use from first launch.
+     *
+     * Scripts installed:
+     *   ~/nastech-agent/kali-setup.sh         — downloads + installs Kali rootfs
+     *   ~/nastech-agent/kali-login.sh         — proot login (becomes `kali` command)
+     *   ~/nastech-agent/kali-nastech-setup.sh — installs NasTech AI inside Kali via apt
+     *   ~/nastech-agent/kali-fonts.sh         — installs Source Code Pro + all coding fonts
+     */
+    static void setupKaliEnvironment(final Context context) {
+        try {
+            String agentDestDir = NasUXConstants.NASUX_HOME_DIR_PATH + "/nastech-agent";
+            File destDir = new File(agentDestDir);
+            if (!destDir.exists()) destDir.mkdirs();
+
+            String[] kaliScripts = {
+                "kali-setup.sh",
+                "kali-login.sh",
+                "kali-nastech-setup.sh",
+                "kali-fonts.sh"
+            };
+
+            for (String script : kaliScripts) {
+                File destFile = new File(agentDestDir, script);
+                try (java.io.InputStream in = context.getAssets().open(script);
+                     java.io.FileOutputStream out = new java.io.FileOutputStream(destFile)) {
+                    byte[] buf = new byte[4096];
+                    int len;
+                    while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
+                    destFile.setExecutable(true, false);
+                    Logger.logInfo(LOG_TAG, "Kali script installed: " + destFile.getAbsolutePath());
+                } catch (Exception e) {
+                    Logger.logWarn(LOG_TAG, "Could not install Kali script " + script + ": " + e.getMessage());
+                }
+            }
+
+            Logger.logInfo(LOG_TAG, "Kali environment scripts installed successfully.");
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "setupKaliEnvironment: failed", e);
         }
     }
 
