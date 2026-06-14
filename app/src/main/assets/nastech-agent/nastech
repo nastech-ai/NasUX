@@ -83,7 +83,7 @@ if sys.version_info < (3, 11):
         f"NasTech requires Python 3.11+. "
         f"You have {sys.version_info.major}.{sys.version_info.minor}."
     )
-    _err("NasUX: pkg install python   |   Desktop: python.org")
+    _err("NasUX (Kali): apt install python3 python3-pip   |   Desktop: python.org")
     sys.exit(1)
 
 _boot(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
@@ -203,6 +203,11 @@ _FALLBACK_HELP = f"""{BLD}NasUX — Powered by NasTech AI{NC}
 {YEL}NasTech CLI is not installed yet.{NC}
 Install it with:
 
+  bash ~/nastech-agent/install.sh
+
+{CYN}On Kali NetHunter (proot-distro) — install Python first if needed:{NC}
+
+  apt update && apt install -y python3 python3-pip python3-venv
   bash ~/nastech-agent/install.sh
 
 Then configure and start:

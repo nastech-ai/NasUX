@@ -167,7 +167,7 @@ def step1_environment(args: argparse.Namespace) -> dict:
             f"NasTech requires Python 3.11+. "
             f"Running {sys.version_info.major}.{sys.version_info.minor}."
         )
-        log_err("On NasUX: pkg install python   |   Desktop: python.org")
+        log_err("On NasUX (Kali): apt install python3 python3-pip   |   Desktop: python.org")
         sys.exit(1)
 
     log_boot(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")

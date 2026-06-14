@@ -3,21 +3,26 @@
 # NasTech-Agent Setup Script (Unified Installer)
 # Powered by NasTech AI — https://github.com/nastech-ai/NasUX
 # ============================================================================
-# Auto-detects platform (desktop/server vs Android/NasUX) and installs accordingly.
+# Auto-detects platform (desktop/server vs Android/NasUX/Kali NetHunter).
 # Uses uv for modern package management on desktop/server.
-# Uses pip on NasUX/Android where uv may be unavailable.
+# Uses pip on NasUX/Android (Kali NetHunter proot) where uv may be unavailable.
 #
 # Usage:
 #   ./install.sh
 #   bash <(curl -fsSL https://raw.githubusercontent.com/nastech-ai/NasTech-Agent/main/install.sh)
 #
 # This script:
-# 1. Auto-detects desktop/server vs Android/NasUX setup path
+# 1. Auto-detects desktop/server vs Android/NasUX/Kali NetHunter setup path
 # 2. Creates a Python 3.11 virtual environment
 # 3. Installs dependencies using uv (desktop/server) or pip (NasUX/Android)
 # 4. Creates .env from template (if not exists)
 # 5. Symlinks the 'nastech' CLI command into PATH
 # 6. Runs setup wizard (optional)
+#
+# Kali NetHunter (proot-distro) notes:
+#   - Packages come from Kali Linux APT repos (not Termux)
+#   - Use: apt update && apt install python3 python3-pip python3-venv
+#   - proot environment detected via PROOT_LOADER / /etc/kali_release
 # ============================================================================
 
 set -e
@@ -52,6 +57,25 @@ is_nasux() {
 # Legacy compat alias — callers should use is_nasux() directly
 is_android_terminal() { is_nasux; }
 
+# Detect Kali NetHunter proot/chroot environment
+is_kali_nethunter() {
+    [ -n "${KALI_VERSION:-}" ] && return 0
+    [ -f /etc/kali_release ] && return 0
+    if [ -f /etc/os-release ]; then
+        grep -qiE "^ID=kali|^ID_LIKE=kali" /etc/os-release 2>/dev/null && return 0
+    fi
+    [ -d /data/data/com.offsec.nethunter ] && return 0
+    return 1
+}
+
+# Detect any proot-distro Linux container on Android (Kali or other)
+is_proot_distro() {
+    [ -n "${PROOT_LOADER:-}" ] && return 0
+    [ -n "${PROOT_TMP_DIR:-}" ] && return 0
+    is_kali_nethunter && return 0
+    return 1
+}
+
 get_command_link_dir() {
     if is_nasux && [ -n "${PREFIX:-}" ]; then
         echo "$PREFIX/bin"
@@ -82,6 +106,12 @@ echo ""
 if is_nasux; then
     echo -e "${CYAN}→${NC} Platform: ${YELLOW}Android / NasUX (Powered by NasTech AI)${NC}"
     INSTALL_MODE="nasux"
+elif is_kali_nethunter; then
+    echo -e "${CYAN}→${NC} Platform: ${YELLOW}Kali NetHunter (Android proot) — NasUX Powered by NasTech AI${NC}"
+    INSTALL_MODE="kali"
+elif is_proot_distro; then
+    echo -e "${CYAN}→${NC} Platform: ${YELLOW}Android proot-distro — NasUX Powered by NasTech AI${NC}"
+    INSTALL_MODE="kali"
 else
     echo -e "${CYAN}→${NC} Platform: ${YELLOW}Desktop/Server${NC}"
     INSTALL_MODE="desktop"
@@ -92,7 +122,7 @@ echo ""
 # Install / locate uv (desktop/server only)
 # ============================================================================
 
-if [ "$INSTALL_MODE" = "desktop" ] || [ "$INSTALL_MODE" = "nasux" -a -z "${PREFIX:-}" ]; then
+if [ "$INSTALL_MODE" = "desktop" ] || { [ "$INSTALL_MODE" = "nasux" ] && [ -z "${PREFIX:-}" ]; }; then
     echo -e "${CYAN}→${NC} Checking for uv (modern Python package manager)..."
     
     UV_CMD=""
@@ -148,7 +178,27 @@ fi
 
 echo -e "${CYAN}→${NC} Checking Python $PYTHON_VERSION..."
 
-if is_nasux; then
+if [ "$INSTALL_MODE" = "kali" ]; then
+    # Kali NetHunter / proot-distro: Python 3 from Kali APT repos
+    PYTHON_PATH=""
+    for _py in python3 python; do
+        if command -v "$_py" >/dev/null 2>&1; then
+            _candidate="$(command -v "$_py")"
+            if "$_candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+                PYTHON_PATH="$_candidate"
+                break
+            fi
+        fi
+    done
+    if [ -n "$PYTHON_PATH" ]; then
+        PYTHON_FOUND_VERSION=$($PYTHON_PATH --version 2>/dev/null)
+        echo -e "${GREEN}✓${NC} $PYTHON_FOUND_VERSION found"
+    else
+        echo -e "${RED}✗${NC} Python 3.11+ not found in Kali environment"
+        echo -e "    Run: ${CYAN}apt update && apt install -y python3 python3-pip python3-venv${NC}"
+        exit 1
+    fi
+elif is_nasux; then
     if command -v python >/dev/null 2>&1; then
         PYTHON_PATH="$(command -v python)"
         if "$PYTHON_PATH" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
@@ -156,12 +206,12 @@ if is_nasux; then
             echo -e "${GREEN}✓${NC} $PYTHON_FOUND_VERSION found"
         else
             echo -e "${RED}✗${NC} NasUX Python must be 3.11+"
-            echo -e "    Run: ${CYAN}pkg install python${NC}"
+            echo -e "    Run (Kali): ${CYAN}apt install python3 python3-pip python3-venv${NC}"
             exit 1
         fi
     else
         echo -e "${RED}✗${NC} Python not found"
-        echo -e "    Run: ${CYAN}pkg install python${NC}"
+        echo -e "    Run (Kali): ${CYAN}apt update && apt install -y python3 python3-pip python3-venv${NC}"
         exit 1
     fi
 else
@@ -212,9 +262,14 @@ if [ "$INSTALL_MODE" = "desktop" ] && [ -n "$UV_CMD" ]; then
     # Desktop/server with uv: use modern sync
     echo -e "    (using uv for fast, deterministic installs)"
     $UV_CMD sync 2>&1 | tail -5
+elif [ "$INSTALL_MODE" = "kali" ]; then
+    # Kali NetHunter proot — pip with Kali's python3
+    echo -e "    (using pip — Kali NetHunter / proot-distro)"
+    pip install --upgrade pip setuptools wheel >/dev/null 2>&1 || true
+    pip install nastech-agent 2>&1 | tail -5 || pip install --no-cache-dir nastech-agent
 else
     # NasUX/Android or pip fallback
-    echo -e "    (using pip — NasUX/Android optimised)"
+    echo -e "    (using pip — NasUX/Android)"
     pip install nastech-agent >/dev/null 2>&1 || pip install --no-cache-dir nastech-agent
 fi
 

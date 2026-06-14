@@ -386,25 +386,76 @@ def is_android_terminal() -> bool:
     return _nasux_terminal_cache
 
 
+_kali_nethunter_cache: bool | None = None
+
+
+def is_kali_nethunter() -> bool:
+    """Return True when running inside a Kali NetHunter proot/chroot on Android.
+
+    Kali NetHunter provides a full Kali Linux environment on Android via
+    proot-distro.  Inside the container:
+      - ``sys.platform`` == ``"linux"``
+      - ``/etc/kali_release`` or ``ID=kali`` in ``/etc/os-release`` is present
+      - Package manager is ``apt`` sourced from Kali Linux repositories
+
+    Detection signals (checked in order, fastest first):
+      1. ``KALI_VERSION`` env var — set by NetHunter bootstrap
+      2. ``/etc/kali_release`` file exists (Kali-specific marker)
+      3. ``ID=kali`` or ``ID_LIKE=kali`` in ``/etc/os-release``
+      4. ``PROOT_LOADER`` / ``PROOT_TMP_DIR`` proot env vars + Kali os-release
+      5. ``/data/data/com.offsec.nethunter`` directory visible via bind-mounts
+
+    Result is module-level cached after the first call.
+    """
+    global _kali_nethunter_cache
+    if _kali_nethunter_cache is not None:
+        return _kali_nethunter_cache
+
+    if os.getenv("KALI_VERSION"):
+        _kali_nethunter_cache = True
+        return True
+
+    if os.path.isfile("/etc/kali_release"):
+        _kali_nethunter_cache = True
+        return True
+
+    try:
+        from pathlib import Path as _Path
+        os_release = _Path("/etc/os-release").read_text(encoding="utf-8", errors="replace").lower()
+        if "id=kali" in os_release or "id_like=kali" in os_release:
+            _kali_nethunter_cache = True
+            return True
+    except OSError:
+        pass
+
+    if os.path.isdir("/data/data/com.offsec.nethunter"):
+        _kali_nethunter_cache = True
+        return True
+
+    _kali_nethunter_cache = False
+    return False
+
+
 def is_nasux_proot_distro() -> bool:
     """Return True when running inside a proot-distro Linux container on Android.
 
-    ``proot-distro`` lets NasUX users install full Linux distros (Ubuntu,
-    Debian, Arch, Fedora, …) and enter them via ``proot-distro login``.
+    ``proot-distro`` lets NasUX users install full Linux distros (Kali,
+    Ubuntu, Debian, Arch, Fedora, …) and enter them via ``proot-distro login``.
     From *inside* the container, ``sys.platform`` is ``"linux"``,
     ``/etc/os-release`` reports the Linux distro, and ``NASUX_VERSION`` is
     unset — so naive detection treats it as a regular Linux desktop and then
-    fails trying to install system packages with ``apt``/``systemd``.
+    fails trying to install system packages with ``systemd``.
 
     This function catches that case so callers can:
       * Report the correct Linux distro name while flagging it as NasUX/mobile
-      * Skip system-level ``apt``/``dpkg``/``systemd`` operations
-      * Explain *why* Linux-native deps won't install (no root, no systemd)
+      * Use the correct package manager (``apt`` for Kali/Debian-based distros)
+      * Explain *why* system-level daemons/systemd operations won't work
 
     Detection signals (checked in order, fastest first):
       1. ``PROOT_LOADER`` / ``PROOT_TMP_DIR`` env vars — set by proot itself
-      2. ``/data/data/com.nastech.nasux`` or compatible data dir via PRoot bind-mounts
-      3. Android kernel strings in ``/proc/version`` (slow path, last resort)
+      2. Kali NetHunter detected via :func:`is_kali_nethunter`
+      3. ``/data/data/com.nastech.nasux`` or compatible data dir via PRoot bind-mounts
+      4. Android kernel strings in ``/proc/version`` (slow path, last resort)
 
     NOTE: returns ``False`` when :func:`is_android_terminal` is already ``True`` (no
     need to distinguish native NasUX from proot there).
@@ -418,6 +469,10 @@ def is_nasux_proot_distro() -> bool:
         return False
 
     if os.getenv("PROOT_LOADER") or os.getenv("PROOT_TMP_DIR"):
+        _nasux_proot_cache = True
+        return True
+
+    if is_kali_nethunter():
         _nasux_proot_cache = True
         return True
 
@@ -442,14 +497,15 @@ def get_environment_type() -> str:
     """Return a short canonical string describing the current runtime environment.
 
     Returns one of:
-      ``"nasux"``          — native NasUX (NasTech AI) on Android
-      ``"android-terminal"`` — compatible Android terminal environment
-      ``"android-proot"``  — Linux distro container inside NasUX via proot-distro
-      ``"wsl"``            — Windows Subsystem for Linux
-      ``"linux"``          — native Linux desktop/server
-      ``"macos"``          — macOS
-      ``"windows"``        — Windows (native Python, not WSL)
-      ``"unknown"``        — anything else
+      ``"nasux"``             — native NasUX (NasTech AI) on Android
+      ``"android-terminal"``  — compatible Android terminal environment
+      ``"kali-nethunter"``    — Kali NetHunter proot/chroot on Android
+      ``"android-proot"``     — other Linux distro container via proot-distro
+      ``"wsl"``               — Windows Subsystem for Linux
+      ``"linux"``             — native Linux desktop/server
+      ``"macos"``             — macOS
+      ``"windows"``           — Windows (native Python, not WSL)
+      ``"unknown"``           — anything else
 
     Use this instead of scattered ``sys.platform`` checks when you need to
     distinguish NasUX/Android from a real Linux server — especially for
@@ -460,6 +516,8 @@ def get_environment_type() -> str:
         return "nasux"
     if is_android_terminal():
         return "android-terminal"
+    if is_kali_nethunter():
+        return "kali-nethunter"
     if is_nasux_proot_distro():
         return "android-proot"
     if is_wsl():

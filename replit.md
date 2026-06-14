@@ -38,6 +38,19 @@ The NasTech Agent is bundled in `app/src/main/assets/nastech-agent/` and is auto
 
 Users can run `bash ~/nastech-agent/install.sh` to complete the Python environment setup, then use the `nastech` CLI.
 
+## Platform Support — Package Sources
+NasUX uses **Kali NetHunter** (proot-distro) as its Android Linux environment. All package operations use Kali APT repos — **not Termux**.
+
+| Environment | Package Manager | Install Python |
+|---|---|---|
+| Kali NetHunter (proot) | `apt` | `apt update && apt install -y python3 python3-pip python3-venv` |
+| Desktop/Server | `uv` / `pip` | system Python or python.org |
+
+Detection in code (`nastech_constants.py`):
+- `is_kali_nethunter()` — checks `KALI_VERSION` env, `/etc/kali_release`, `ID=kali` in `/etc/os-release`, or `/data/data/com.offsec.nethunter`
+- `get_environment_type()` returns `"kali-nethunter"` for Kali proot, `"nasux"` for native NasUX shell
+- `is_nasux_proot_distro()` returns `True` for Kali (subcase of proot detection)
+
 ## Building
 Requires Android SDK and NDK. Cannot be run as a web app — this is a native Android APK project.
 
@@ -48,3 +61,4 @@ Requires Android SDK and NDK. Cannot be run as a web app — this is a native An
 ## User Preferences
 - All branding is NasUX / NasTech AI throughout the entire codebase
 - NasTech Agent is permanently bundled and auto-installs on first boot
+- Package source is Kali Linux APT (not Termux pkg) — use `apt install` everywhere
