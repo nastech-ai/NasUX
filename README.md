@@ -1,6 +1,6 @@
 # NasUX — Powered by NasTech AI
 
-[![Build NasUX](https://github.com/nastech-ai/nasux-app/workflows/Build%20NasUX/badge.svg)](https://github.com/nastech-ai/nasux-app/actions)
+[![Build NasUX](https://github.com/nastech-ai/NasUX-App/workflows/Build%20NasUX/badge.svg)](https://github.com/nastech-ai/nasux-app/actions)
 [![NasTech AI Agent](https://img.shields.io/badge/NasTech%20AI-bundled-00D4AA)](https://github.com/nastech-ai/NasTech-Agent)
 [![Min SDK](https://img.shields.io/badge/Android-5.0%2B-blue)](https://github.com/nastech-ai/nasux-app)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE.md)
