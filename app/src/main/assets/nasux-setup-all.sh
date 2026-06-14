@@ -43,9 +43,35 @@ info "Log: $LOG_FILE"
 info "Started: $(date)"
 
 # =============================================================================
-# Step 0: Ensure Kali rootfs is installed
+# Step 0a: NasTech Environment Setup (NASUX_VERSION, PATH, aliases, .env)
 # =============================================================================
-step "Step 0/6: Kali Linux Environment"
+step "Step 0a: NasTech AI Environment Setup"
+
+if [ -f "$NASUX_AGENT_DIR/nastech-env-setup.sh" ]; then
+    bash "$NASUX_AGENT_DIR/nastech-env-setup.sh" 2>&1 | tee -a "$LOG_FILE"
+    log "NasTech environment configured"
+else
+    warn "nastech-env-setup.sh not found — writing minimal env to .bashrc"
+    MARKER="# >>> NasTech AI Environment (NasUX) <<<"
+    if ! grep -qF "$MARKER" "$HOME/.bashrc" 2>/dev/null; then
+        cat >> "$HOME/.bashrc" << 'MINENV'
+
+# >>> NasTech AI Environment (NasUX) <<<
+export NASUX_VERSION=1
+export NASTECH_PLATFORM=nasux
+export PATH="$HOME/nastech-agent:$HOME/.local/bin:$PATH"
+alias kali="bash $HOME/nastech-agent/kali-login.sh"
+alias ai='nastech'
+# <<< NasTech AI Environment End <<<
+MINENV
+        log "Minimal NasTech env written to ~/.bashrc"
+    fi
+fi
+
+# =============================================================================
+# Step 0b: Ensure Kali rootfs is installed
+# =============================================================================
+step "Step 0b/6: Kali Linux Environment"
 
 KALI_FS="${KALI_FS:-$HOME/kali-fs}"
 

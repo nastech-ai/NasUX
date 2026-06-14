@@ -482,7 +482,8 @@ final class NasUXInstaller {
                 "kali-setup.sh",
                 "kali-login.sh",
                 "kali-nastech-setup.sh",
-                "kali-fonts.sh"
+                "kali-fonts.sh",
+                "nastech-env-setup.sh"
             };
 
             for (String script : kaliScripts) {
@@ -567,19 +568,51 @@ final class NasUXInstaller {
                 }
             } catch (Exception ignored) {}
 
-            // Make key scripts executable
-            String[] executableFiles = {
-                "install.sh", "start.sh", "nastech",
-                "nastech_launcher.py", "nastech_deps.py"
-            };
-            for (String fname : executableFiles) {
-                File f = new File(agentDestDir, fname);
-                if (f.exists()) f.setExecutable(true, false);
-            }
+            // Make ALL scripts in the entire agent tree executable
+            makeAllScriptsExecutable(new File(agentDestDir));
 
             Logger.logInfo(LOG_TAG, "NasTech Agent installed successfully at " + agentDestDir);
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to install NasTech Agent", e);
+        }
+    }
+
+    /**
+     * Recursively walks {@code dir} and sets the executable bit on every file that:
+     * <ul>
+     *   <li>ends with {@code .sh}</li>
+     *   <li>ends with {@code .py} and starts with a {@code #!} shebang line</li>
+     *   <li>has no extension and is named {@code nastech}, {@code nastech-*}, or {@code kali}</li>
+     * </ul>
+     * Safe to call on a large tree — skips directories and binary blobs.
+     */
+    private static void makeAllScriptsExecutable(File dir) {
+        if (dir == null || !dir.isDirectory()) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                makeAllScriptsExecutable(f);
+                continue;
+            }
+            String name = f.getName();
+            boolean isScript = name.endsWith(".sh")
+                    || name.equals("nastech")
+                    || name.equals("kali")
+                    || name.startsWith("nastech-")
+                    || name.startsWith("kali-");
+            if (!isScript && name.endsWith(".py")) {
+                // Only chmod .py files that have a shebang (#!/...)
+                try (java.io.RandomAccessFile raf = new java.io.RandomAccessFile(f, "r")) {
+                    byte[] buf = new byte[2];
+                    if (raf.read(buf) == 2 && buf[0] == '#' && buf[1] == '!') {
+                        isScript = true;
+                    }
+                } catch (Exception ignored) {}
+            }
+            if (isScript) {
+                f.setExecutable(true, false);
+            }
         }
     }
 
