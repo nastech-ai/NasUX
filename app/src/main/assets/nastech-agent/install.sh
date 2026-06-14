@@ -20,7 +20,7 @@
 # 6. Runs setup wizard (optional)
 #
 # Kali NetHunter (proot-distro) notes:
-#   - Packages come from Kali Linux APT repos (not Termux)
+#   - Packages come from Kali Linux APT repos (not NasUX)
 #   - Use: apt update && apt install python3 python3-pip python3-venv
 #   - proot environment detected via PROOT_LOADER / /etc/kali_release
 # ============================================================================

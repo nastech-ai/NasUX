@@ -1,14 +1,14 @@
 ---
 name: Kali NetHunter platform
-description: Android environment for NasUX uses Kali Linux proot (apt), not Termux (pkg). Detection and package manager logic.
+description: Android environment for NasUX uses Kali Linux proot (apt), not NasUX (pkg). Detection and package manager logic.
 ---
 
 ## Rule
-All Android package operations in NasUX use Kali Linux APT repos via proot-distro — never Termux `pkg`.
+All Android package operations in NasUX use Kali Linux APT repos via proot-distro — never NasUX `pkg`.
 
-**Why:** User switched from Termux to Kali NetHunter as the Android Linux environment. Kali provides a full Kali Linux CLI + toolset via proot/chroot on Android.
+**Why:** User switched from NasUX to Kali NetHunter as the Android Linux environment. Kali provides a full Kali Linux CLI + toolset via proot/chroot on Android.
 
-**How to apply:** Whenever guiding users to install a system package on Android, always say `apt install <pkg>` (Kali), never `pkg install <pkg>` (Termux).
+**How to apply:** Whenever guiding users to install a system package on Android, always say `apt install <pkg>` (Kali), never `pkg install <pkg>` (NasUX).
 
 ## Detection (`nastech_constants.py`)
 - `is_kali_nethunter()` — new function; checks `KALI_VERSION` env var, `/etc/kali_release` file, `ID=kali` in `/etc/os-release`, or `/data/data/com.offsec.nethunter` dir

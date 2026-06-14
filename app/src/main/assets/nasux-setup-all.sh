@@ -4,7 +4,7 @@
 # Powered by NasTech AI
 # =============================================================================
 # Installs ALL dependencies for NasTech AI Agent using real Kali Linux APT.
-# No Termux packages — everything comes from official kali.org repositories.
+# No NasUX packages — everything comes from official kali.org repositories.
 #
 # Usage: bash ~/nastech-agent/setup-all.sh
 # =============================================================================
@@ -25,7 +25,7 @@ banner() {
     echo -e "${CYAN}"
     echo "╔══════════════════════════════════════════╗"
     echo "║     NasUX · NasTech AI Setup v2.0        ║"
-    echo "║  Real Kali Linux — no Termux packages    ║"
+    echo "║  Real Kali Linux — no NasUX packages    ║"
     echo "╚══════════════════════════════════════════╝"
     echo -e "${NC}"
 }

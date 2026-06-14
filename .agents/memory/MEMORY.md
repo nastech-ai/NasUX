@@ -1,3 +1,3 @@
 - [NasUX rebranding](nasux-rebranding.md) — Full NasUX rebrand: package com.nastech.nasux, module nasux-shared, NasTech Agent bundled in assets, auto-installs on first boot.
 - [Bootstrap patching](bootstrap-patching.md) — v4 patcher: text+ELF binary+ZIP entry names+GPG keys all patched; 130 ELF files have compiled-in symbols impossible to change without recompile.
-- [Kali NetHunter platform](kali-nethunter-platform.md) — Android environment uses Kali proot (apt), not Termux (pkg); is_kali_nethunter() added to nastech_constants.py; get_environment_type() returns "kali-nethunter".
+- [Kali NetHunter platform](kali-nethunter-platform.md) — Android environment uses Kali proot (apt), not NasUX (pkg); is_kali_nethunter() added to nastech_constants.py; get_environment_type() returns "kali-nethunter".

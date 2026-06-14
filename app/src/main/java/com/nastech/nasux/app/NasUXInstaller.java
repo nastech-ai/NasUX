@@ -419,7 +419,7 @@ final class NasUXInstaller {
 
     /**
      * Writes APT sources pointing to the official Kali Linux rolling repository.
-     * This replaces any Termux/NasUX CDN sources so that `apt install` inside Kali
+     * This replaces any NasUX/NasUX CDN sources so that `apt install` inside Kali
      * always fetches real Kali packages from kali.org.
      *
      * Also writes the Kali sources into the Kali rootfs (kali-fs) if it already exists.
