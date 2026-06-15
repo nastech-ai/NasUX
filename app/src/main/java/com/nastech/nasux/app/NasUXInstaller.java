@@ -257,6 +257,9 @@ final class NasUXInstaller {
                     // Write the correct APT sources so pkg install fetches from the right repo
                     fixPackageSources(activity);
 
+                    // Overwrite bootstrap MOTD with NasUX branding and apt commands
+                    rewriteMOTD();
+
                     // Permanently install NasTech Agent into the NasUX home directory
                     installNasTechAgent(activity);
 
@@ -419,7 +422,7 @@ final class NasUXInstaller {
 
     /**
      * Writes APT sources pointing to the official Kali Linux rolling repository.
-     * This replaces any NasUX/NasUX CDN sources so that `apt install` inside Kali
+     * This replaces any Termux/NasUX CDN sources so that `apt install` inside Kali
      * always fetches real Kali packages from kali.org.
      *
      * Also writes the Kali sources into the Kali rootfs (kali-fs) if it already exists.
@@ -459,6 +462,53 @@ final class NasUXInstaller {
         } catch (Exception e) {
             // Non-fatal
             Logger.logStackTraceWithMessage(LOG_TAG, "fixPackageSources: could not write sources.list", e);
+        }
+    }
+
+    /**
+     * Overwrites the bootstrap's etc/motd with NasUX-branded content using apt commands.
+     * The upstream bootstrap ships a Termux motd with `pkg install` instructions; this
+     * replaces it on every fresh install so the user always sees correct NasUX content.
+     */
+    private static void rewriteMOTD() {
+        try {
+            File motdFile = new File(NASUX_PREFIX_DIR_PATH + "/etc/motd");
+            if (!motdFile.getParentFile().exists()) motdFile.getParentFile().mkdirs();
+
+            String motd =
+                "########################################\n" +
+                "#                                      #\n" +
+                "#   N A S U X   T E R M I N A L       #\n" +
+                "#   Powered by NasTech AI              #\n" +
+                "#                                      #\n" +
+                "#   bash ~/nastech-agent/start.sh      #\n" +
+                "#   to launch NasTech AI Agent         #\n" +
+                "########################################\n" +
+                "\n" +
+                "Welcome to NasUX — Powered by NasTech AI\n" +
+                "\n" +
+                "Docs:       https://github.com/nastech-ai/NasUX\n" +
+                "Issues:     https://github.com/nastech-ai/NasUX/issues\n" +
+                "\n" +
+                "Working with packages:\n" +
+                "\n" +
+                " * Search:  apt search <query>\n" +
+                " * Install: apt install <package>\n" +
+                " * Upgrade: apt update && apt upgrade\n" +
+                "\n" +
+                "Install Python for NasTech AI Agent:\n" +
+                "\n" +
+                " * apt install python3 python3-pip python3-venv\n" +
+                " * bash ~/nastech-agent/install.sh\n" +
+                "\n";
+
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(motdFile)) {
+                fos.write(motd.getBytes("UTF-8"));
+            }
+            motdFile.setReadable(true, false);
+            Logger.logInfo(LOG_TAG, "MOTD rewritten: " + motdFile.getAbsolutePath());
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "rewriteMOTD: could not write motd", e);
         }
     }
 

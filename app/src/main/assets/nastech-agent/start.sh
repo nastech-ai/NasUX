@@ -77,11 +77,32 @@ trap _cleanup EXIT INT TERM
 # ============================================================================
 boot_log "Step 1: Core config loader — setting up Python venv..."
 
+_ensure_python3() {
+  if command -v python3 >/dev/null 2>&1; then
+    return 0
+  fi
+  warn_log "python3 not found — attempting auto-install via apt..."
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get install -y python3 python3-pip python3-venv 2>&1 | tail -5 && \
+      ok_log "python3 installed via apt-get" && return 0
+  fi
+  if command -v apt >/dev/null 2>&1; then
+    apt install -y python3 python3-pip python3-venv 2>&1 | tail -5 && \
+      ok_log "python3 installed via apt" && return 0
+  fi
+  err_log "Cannot install python3 automatically."
+  err_log "Run:  apt install python3 python3-pip python3-venv"
+  err_log "Then: bash ~/nastech-agent/install.sh"
+  exit 1
+}
+
+_ensure_python3
+
 if [ ! -d ".venv" ]; then
   info_log "Creating Python virtual environment..."
   if command -v uv >/dev/null 2>&1; then
     uv venv .venv --python 3.11 || {
-      err_log "uv venv creation failed — falling back to python3 -m venv"
+      warn_log "uv venv creation failed — falling back to python3 -m venv"
       python3 -m venv .venv || { err_log "Cannot create venv. Install Python 3.11+"; exit 1; }
     }
   else
