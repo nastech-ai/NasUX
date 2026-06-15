@@ -422,7 +422,7 @@ final class NasUXInstaller {
 
     /**
      * Writes APT sources pointing to the official Kali Linux rolling repository.
-     * This replaces any Termux/NasUX CDN sources so that `apt install` inside Kali
+     * This replaces any NasUX/NasUX CDN sources so that `apt install` inside Kali
      * always fetches real Kali packages from kali.org.
      *
      * Also writes the Kali sources into the Kali rootfs (kali-fs) if it already exists.
@@ -467,7 +467,7 @@ final class NasUXInstaller {
 
     /**
      * Overwrites the bootstrap's etc/motd with NasUX-branded content using apt commands.
-     * The upstream bootstrap ships a Termux motd with `pkg install` instructions; this
+     * The upstream bootstrap ships a NasUX motd with `pkg install` instructions; this
      * replaces it on every fresh install so the user always sees correct NasUX content.
      */
     private static void rewriteMOTD() {
