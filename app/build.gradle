@@ -50,8 +50,8 @@ android {
         applicationId "com.nastech.nasux"
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 131
-        versionName "0.131.0"
+        versionCode 132
+        versionName "0.132.0"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
